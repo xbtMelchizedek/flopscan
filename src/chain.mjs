@@ -2,10 +2,11 @@
 // we compare all describe the same state (the multicall-at-one-block habit from yearn-exporter).
 // Nothing here signs or submits; the module never builds an extrinsic.
 
-import { ApiPromise, WsProvider } from "@polkadot/api";
+import { ApiPromise, HttpProvider, WsProvider } from "@polkadot/api";
+import { RetryableError, createLimiter, withRetry } from "./polite.mjs";
 
 export const NETWORKS = Object.freeze({
-  devnet: { rpc: "wss://rpc.devnet.flop.network", genesis: "0x99c172c095340ace980631f9123544c6bebd4839f3437e463533422d8be2d631" },
+  devnet: { rpc: "wss://rpc.devnet.flop.network", http: "https://rpc.devnet.flop.network", genesis: "0x99c172c095340ace980631f9123544c6bebd4839f3437e463533422d8be2d631" },
 });
 
 const VERIFIER_PALLETS = [
@@ -22,20 +23,69 @@ function withTimeout(promise, ms, what) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-/** Connect and refuse any chain whose genesis is not the one pinned for `network`. */
-export async function connect(network, rpcOverride) {
-  const net = NETWORKS[network];
-  if (!net) throw new Error(`unknown network ${network}; known: ${Object.keys(NETWORKS).join(", ")}`);
-  // No auto-reconnect: a dropped socket is an error we report, not a loop we hide.
-  const provider = new WsProvider(rpcOverride ?? net.rpc, false, {}, CONNECT_TIMEOUT_MS);
-  await withTimeout(provider.connect(), CONNECT_TIMEOUT_MS, "rpc connect");
-  const api = await withTimeout(ApiPromise.create({ provider, noInitWarn: true, throwOnConnect: true }), CONNECT_TIMEOUT_MS, "metadata");
+/** Errors worth another try: transport drops, 503s, the node's own rate limiting. */
+export function isRetryableRpcError(e) {
+  if (e instanceof RetryableError) return true;
+  const m = String(e?.message ?? e);
+  return /\b(429|502|503|504)\b|timed out|timeout|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|disconnected|Abnormal Closure|-32029|-32999|Too many|rate.?limit|fetch failed|Unable to retrieve header|UnknownBlock|Unknown block|header not found/i.test(m);
+}
+
+/**
+ * Route every JSON-RPC request through the limiter and retry the retryable ones, so @polkadot/api's
+ * own internal reads (metadata, runtime versions) are polite too.
+ */
+export function politeProvider(provider, { limiter, attempts = 6, onRetry } = {}) {
+  const send = provider.send.bind(provider);
+  provider.send = (method, params, ...rest) => {
+    if (rest[1]) return send(method, params, ...rest); // subscriptions go straight through
+    return withRetry(() => limiter.schedule(() => send(method, params, ...rest)), { attempts, isRetryable: isRetryableRpcError, onRetry });
+  };
+  provider.rpcStats = () => limiter.stats;
+  return provider;
+}
+
+async function connectOnce(url, net, limiter, onRetry) {
+  const isHttp = /^https?:/.test(url);
+  const provider = isHttp ? new HttpProvider(url) : new WsProvider(url, false, {}, CONNECT_TIMEOUT_MS);
+  if (!isHttp) await withTimeout(provider.connect(), CONNECT_TIMEOUT_MS, "rpc connect");
+  politeProvider(provider, { limiter, onRetry });
+  let api;
+  try {
+    api = await withTimeout(ApiPromise.create({ provider, noInitWarn: true, throwOnConnect: true }), CONNECT_TIMEOUT_MS * 2, "metadata");
+  } catch (e) {
+    await provider.disconnect?.().catch(() => {});
+    throw e;
+  }
   const genesis = api.genesisHash.toHex();
   if (genesis !== net.genesis) {
     await api.disconnect();
-    throw new Error(`genesis ${genesis} is not ${network} (${net.genesis})`);
+    throw new Error(`genesis ${genesis} is not the pinned one (${net.genesis})`); // not retryable: wrong chain
   }
   return api;
+}
+
+/**
+ * Connect and refuse any chain whose genesis is not the one pinned for `network`.
+ * Tries the WebSocket endpoint with backoff, then the HTTP endpoint, so a flaky socket or a
+ * Cloudflare 503 at the handshake does not end the run.
+ */
+export async function connect(network, rpcOverride, { rps = 5, concurrency = 4, attempts = 4, log = () => {} } = {}) {
+  const net = NETWORKS[network];
+  if (!net) throw new Error(`unknown network ${network}; known: ${Object.keys(NETWORKS).join(", ")}`);
+  const limiter = createLimiter({ rps, concurrency });
+  const onRetry = (e, k, ms) => log(`rpc retry ${k + 1} in ${ms} ms: ${e.message ?? e}`);
+  // HTTP first: each request may land on a different backend behind the load balancer, and a
+  // by-hash read that hits a lagging backend is simply retried. A WebSocket pins one backend.
+  const urls = rpcOverride ? [rpcOverride] : [net.http, net.rpc].filter(Boolean);
+  let last;
+  for (const url of urls) {
+    try {
+      return await withRetry(() => connectOnce(url, net, limiter, onRetry).catch((e) => {
+        throw isRetryableRpcError(e) || /ErrorEvent|connect|WebSocket/i.test(String(e?.message ?? e?.constructor?.name ?? e)) ? new RetryableError(`${url}: ${e?.message ?? e}`) : e;
+      }), { attempts, onRetry: (e, k, ms) => log(`connect ${url} retry ${k + 1} in ${ms} ms: ${e.message}`) });
+    } catch (e) { last = e; log(`connect ${url} failed: ${e.message}`); }
+  }
+  throw last;
 }
 
 export async function pin(api, at) {

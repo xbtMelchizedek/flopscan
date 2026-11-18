@@ -4,8 +4,12 @@
   "description": "Read-only FLOP chain forensics: reconcile block rewards, issuance and verifier use from two independent sources.",
   "license": "MIT",
   "type": "module",
-  "bin": { "flopscan": "src/cli.mjs" },
-  "engines": { "node": ">=22" },
+  "bin": {
+    "flopscan": "src/cli.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "secret-scan": "python3 scripts/secret_scan.py"
@@ -13,5 +17,12 @@
   "dependencies": {
     "@polkadot/api": "17.0.2"
   },
-  "repository": { "type": "git", "url": "git+https://github.com/xbtMelchizedek/flopscan.git" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xbtMelchizedek/flopscan.git"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "fast-check": "4.10.3"
+  }
 }
