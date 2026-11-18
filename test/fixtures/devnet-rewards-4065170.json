@@ -1,0 +1,822 @@
+{
+ "recorded_at": "2026-11-18T20:52:41.430Z",
+ "state": {
+  "pinned": {
+   "hash": "0x207dc2e5589fae9659ff447499dae3b71de91dd85976d734d2e24c518fd4cc0c",
+   "number": 4065170
+  },
+  "lastDistributionBlock": "4060800",
+  "consts": {
+   "initialRewardPerBlock": "96000000000000000000",
+   "halvingIntervalBlocks": "63072000",
+   "maxHalvings": "5",
+   "distributionPeriodBlocks": "86400"
+  },
+  "counters": {
+   "miner": "37324799999999999999999999",
+   "validator": "38983680000000000000000000",
+   "agent": "38983680000000000000000000",
+   "staker": "19491840000000000000000000"
+  }
+ },
+ "periods": [
+  {
+   "block": "86400",
+   "hash": "0x6107af8b65548622196e8405e1d7ac0f3d3d39d03f735041271db14208b9788d",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "6220800000000000000000000",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "1"
+   },
+   "failed": null,
+   "miner_rewards": [
+    {
+     "miner": "5CK3d22qkLbA2bYYZ5LNoC3xdHdsfTfuhcKmUS8GKL4kz87Z",
+     "amount": "6220800000000000000000000",
+     "gn": "84"
+    }
+   ],
+   "miner_failures": []
+  },
+  {
+   "block": "172800",
+   "hash": "0xea7678a188b76cedf30f355a831f807ca27d1ae28e528ebcb4bf63d0113e933b",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "6220799999999999999999999",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "2"
+   },
+   "failed": null,
+   "miner_rewards": [
+    {
+     "miner": "5CK3d22qkLbA2bYYZ5LNoC3xdHdsfTfuhcKmUS8GKL4kz87Z",
+     "amount": "6066592405063291139240506",
+     "gn": "3698"
+    },
+    {
+     "miner": "5FWZ3SurpMWoMoBNc35ju3ZHSUZm9DHs31x1kokS75ehFQWq",
+     "amount": "154207594936708860759493",
+     "gn": "94"
+    }
+   ],
+   "miner_failures": []
+  },
+  {
+   "block": "259200",
+   "hash": "0x11ec20dcf34fa9d513c15d8918b41a81683961ad9cda997271256562a1989421",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "6220800000000000000000000",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "1"
+   },
+   "failed": null,
+   "miner_rewards": [
+    {
+     "miner": "5CK3d22qkLbA2bYYZ5LNoC3xdHdsfTfuhcKmUS8GKL4kz87Z",
+     "amount": "6220800000000000000000000",
+     "gn": "4407"
+    }
+   ],
+   "miner_failures": []
+  },
+  {
+   "block": "345600",
+   "hash": "0x8c22f38bb40c08ac2e325f0d401f4522930bd5441fe92259de8c5ec578bd0d4c",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "432000",
+   "hash": "0xcf99352eccc360c7666412b1ad1cb2c8d7bed9b6437fa7e37905db6c4ad1e99e",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "6220800000000000000000000",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "2"
+   },
+   "failed": null,
+   "miner_rewards": [
+    {
+     "miner": "5CK3d22qkLbA2bYYZ5LNoC3xdHdsfTfuhcKmUS8GKL4kz87Z",
+     "amount": "3110400000000000000000000",
+     "gn": "10"
+    },
+    {
+     "miner": "5FWZ3SurpMWoMoBNc35ju3ZHSUZm9DHs31x1kokS75ehFQWq",
+     "amount": "3110400000000000000000000",
+     "gn": "10"
+    }
+   ],
+   "miner_failures": []
+  },
+  {
+   "block": "518400",
+   "hash": "0x685941eadf2898bfaa8818a28b07271be0393d52890b028d7ef13158ee6be6f8",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "604800",
+   "hash": "0x8410809410db93d04c30558db9c08313bda2893415ef9374d58d96b970ed081b",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "6220800000000000000000000",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "1"
+   },
+   "failed": null,
+   "miner_rewards": [
+    {
+     "miner": "5FWZ3SurpMWoMoBNc35ju3ZHSUZm9DHs31x1kokS75ehFQWq",
+     "amount": "6220800000000000000000000",
+     "gn": "303559"
+    }
+   ],
+   "miner_failures": []
+  },
+  {
+   "block": "691200",
+   "hash": "0xdbca2dd47084891e3a1b7926e1c31f4941e5a1f4e4c582250226d1dde27a89c9",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "777600",
+   "hash": "0x4536acba83a40de4ad6ad4f46cb3b9c8f9dcc22e032a4a37a239eb1719055932",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "6220800000000000000000000",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "1"
+   },
+   "failed": null,
+   "miner_rewards": [
+    {
+     "miner": "5FWZ3SurpMWoMoBNc35ju3ZHSUZm9DHs31x1kokS75ehFQWq",
+     "amount": "6220800000000000000000000",
+     "gn": "316650"
+    }
+   ],
+   "miner_failures": []
+  },
+  {
+   "block": "864000",
+   "hash": "0xf7e7c8e41c5abe2d1352503f4fe04c3356776dd77f276f8f08adc922fd7ea310",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "950400",
+   "hash": "0xebfe64317fedf99288ea28cea89dd80ab9d7bdc9969664555aa00b1886208ba9",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1036800",
+   "hash": "0x0c6543cc2365c3c638db0c34c0de188bd7d87e9703f231d82d2ac170bcb082a3",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1123200",
+   "hash": "0xc18a6ee3880e5b27ad00b494e337cf882539d393b947eebc570c79269e60e6d9",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1209600",
+   "hash": "0xbc3530969c662e7e1b75b0bfcf8ddf45f518a19c464491834586337e01878aaf",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1296000",
+   "hash": "0x2094a485bbc542a32ea6a7475ea5754241a025b49c709a3b1ed8e850b30bd4a6",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1382400",
+   "hash": "0x2781987c3f76e8b2831d29311065dfffc9d5ba16d561c212a84f43b313cf88c9",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1468800",
+   "hash": "0x15eb6c57afdb78689d284b1c6fb40dddf5035d6a7813f5010f20cf6cd95ecbdc",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1555200",
+   "hash": "0x8ba31e959b38a48f44f578ffe148abf5620ff2016d11c7cc45aa125236c98ab8",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1641600",
+   "hash": "0xd28cd513097a8280915317a38004cd6da7d4f851302a32add22eca81a88dfde8",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1728000",
+   "hash": "0x8161f3cc130ae428407c83ca2de32c27327527a4045b172719293b39f3b408f5",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1814400",
+   "hash": "0xff17e2d0564346afb06a4f964c331066f2d43c887f0f704054cc6cf6b0f63b5c",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1900800",
+   "hash": "0x739014e758a7a032a2caaa11c3817a7b5e8bdcaf7fa18b7febef28c41d40e000",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "1987200",
+   "hash": "0x0d8ac7be0cce54df84302728145fdfdd8e1a94eb43993cfd90750b6ed5928d77",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2073600",
+   "hash": "0xba3ccdaa148db4652cd372b8f9a8d8ff5a8f54625c55b7f77548a88f09cd1560",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2160000",
+   "hash": "0x3f78e29436c0a537eba06f5e7d9f2dacb90003e971c299f31e8bb8865b02058d",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2246400",
+   "hash": "0xdf75a5f46013d269407080e091c08bb335e6f61768e13bbe29f196a9268dae63",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2332800",
+   "hash": "0xe445cf6a9001074f7e6db56ca08d6967b0509fe01d43d4ce28c201a24c11e5fc",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2419200",
+   "hash": "0x3390544d2de156e81e38950d41ab72774ab5263c8d044d125538d892c729a352",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2505600",
+   "hash": "0xfc208f523adf451d0b58d3ca93da678c003d94ffccd81a178c11a5d2ca96e617",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2592000",
+   "hash": "0x3aaa3bae26b5affc2843ae33c5d94233b374ae0ba3f6366a787477ee2ba9a954",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2678400",
+   "hash": "0xacf78d12a6fa4842db94d11897d1194e04e06179ae2d2b266591950bca709b6e",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2764800",
+   "hash": "0xaf49d5f40cc6774982743bf43836d7cc19456f3059841c4b245407ce461f874e",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2851200",
+   "hash": "0xe4a31d882b34ad2898f6066c35ee1f16b9eb6e15d7a8e85ccfbd907ba959e530",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "2937600",
+   "hash": "0x07d031315cca793c7b02ae585f0b92edd9d42514f1cd72063381ac79a15243ab",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3024000",
+   "hash": "0x7e3bac8cefeed229e9f905d54c628f84b40d710f0ef7adbb1f960bbce5eec7af",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3110400",
+   "hash": "0x8d1bbd55cced8515aa261afea409229741154fcd1c11094947fcfaa9280205b3",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3196800",
+   "hash": "0x9d6c26a17411a5cdfdf33beacc9074ffc8b6fc1179713179cd40d15aca6bbc45",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3283200",
+   "hash": "0x3ca1a1302c9616db11806bb5fd03e9cbd041b7647001306c7ca385204b8a42f9",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3369600",
+   "hash": "0xe28105c052579625363f9359e230502fae6fad7ce2cd4ec92369c2f3a61f162d",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3456000",
+   "hash": "0x7fb1a91fda9d4996d6b2eec13938aa9a07b034b79fa8ea2de9de09f17cc5e51c",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3542400",
+   "hash": "0x746c4e10fed9d3839eef4339eacc6540964b8e3c23551bad7eaeea9a5dfeaf5e",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3628800",
+   "hash": "0xe5e09bd7df990dfd98531e446e1d44d50a0f7e89f2d7818f589629eb8473bfab",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3715200",
+   "hash": "0x6e4307451fd526ddd0cdd535a961f203f5cc5f37ffc3c22fbae41213a658226c",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3801600",
+   "hash": "0xce805defa4f95461fd23da12a0e95fb252aba5746a6660a3eaa91dbc21c5e155",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3888000",
+   "hash": "0xd89b9d12b0aa6a80d580dc1aaf4f978ca16021d8363895036e0fb46d2cb3c5ed",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "3974400",
+   "hash": "0x51968d5155e586f4d6e0a9dadba5ec84216bf62c69c9969deb11239ef617616a",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  },
+  {
+   "block": "4060800",
+   "hash": "0x1d1817991b2bc34588f7207de2d8ec40103f050214319ee736ed189ecef77795",
+   "distributed": {
+    "period_blocks": "86400",
+    "total_reward": "8294400000000000000000000",
+    "miner_share": "0",
+    "validator_share": "829440000000000000000000",
+    "agent_share": "829440000000000000000000",
+    "staker_share": "414720000000000000000000",
+    "miners_paid": "0"
+   },
+   "failed": null,
+   "miner_rewards": [],
+   "miner_failures": []
+  }
+ ]
+}

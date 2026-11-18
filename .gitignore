@@ -1,0 +1,6 @@
+node_modules/
+*.keystore.json
+*.pass
+.env*
+*.pem
+*.key
