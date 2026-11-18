@@ -7,22 +7,32 @@
 
 export const MAX_BPS = 10_000n;
 export const DOCUMENTED_SPLIT_BPS = Object.freeze({ miner: 7_500n, validator: 1_000n, agent: 1_000n, staker: 500n });
+// Devnet has under 100 periods. A bound keeps a malformed reading from looping or eating the heap.
+export const MAX_PERIODS = 100_000n;
+
+/** A chain constant as a BigInt >= `min`, or a RangeError naming it. */
+function positive(name, v, min = 1n) {
+  if (!/^\d+$/.test(String(v))) throw new RangeError(`${name} is not a non-negative integer: ${v}`);
+  const x = BigInt(v);
+  if (x < min) throw new RangeError(`${name} must be >= ${min}, got ${x}`);
+  return x;
+}
 
 /** Reward minted for block `n`: initial >> halvings, halvings capped at `maxHalvings`. */
 export function rewardAt(n, { initialRewardPerBlock, halvingIntervalBlocks, maxHalvings }) {
-  const block = BigInt(n);
-  if (block < 1n) throw new RangeError(`block must be >= 1, got ${n}`);
-  let halvings = (block - 1n) / BigInt(halvingIntervalBlocks); // assumption: block 1 is the first rewarded block
-  if (halvings > BigInt(maxHalvings)) halvings = BigInt(maxHalvings);
-  return BigInt(initialRewardPerBlock) >> halvings;
+  const block = positive("block", n);
+  let halvings = (block - 1n) / positive("halvingIntervalBlocks", halvingIntervalBlocks); // assumption: block 1 is the first rewarded block
+  const cap = positive("maxHalvings", maxHalvings, 0n);
+  if (halvings > cap) halvings = cap;
+  return positive("initialRewardPerBlock", initialRewardPerBlock, 0n) >> halvings;
 }
 
 /** Scheduled pot for the period ending at `endBlock`: the sum over (endBlock - periodBlocks, endBlock]. */
 export function scheduledPeriodTotal(endBlock, consts) {
-  const end = BigInt(endBlock);
-  const len = BigInt(consts.distributionPeriodBlocks);
+  const end = positive("endBlock", endBlock);
+  const len = positive("distributionPeriodBlocks", consts.distributionPeriodBlocks);
   if (end % len !== 0n) throw new RangeError(`${endBlock} is not a period boundary (period ${len})`);
-  const interval = BigInt(consts.halvingIntervalBlocks);
+  const interval = positive("halvingIntervalBlocks", consts.halvingIntervalBlocks);
   let total = 0n;
   let b = end - len + 1n;
   while (b <= end) {
@@ -44,8 +54,9 @@ export function documentedLeg(total, leg) {
 
 /** Period boundaries in (0, lastDistributionBlock], oldest first. */
 export function periodBoundaries(lastDistributionBlock, distributionPeriodBlocks) {
-  const len = BigInt(distributionPeriodBlocks);
-  const last = BigInt(lastDistributionBlock);
+  const len = positive("distributionPeriodBlocks", distributionPeriodBlocks);
+  const last = positive("lastDistributionBlock", lastDistributionBlock, 0n);
+  if (last / len > MAX_PERIODS) throw new RangeError(`${last / len} periods is more than ${MAX_PERIODS}; refusing a reading that large`);
   if (last % len !== 0n) throw new RangeError(`lastDistributionBlock ${last} is not a multiple of ${len}`);
   const out = [];
   for (let b = len; b <= last; b += len) out.push(b);
