@@ -14,7 +14,7 @@ submits and never holds a key. Unaffiliated with Flop Labs.
 npm ci
 npm run scan          # node src/cli.mjs scan --out data/v1 --cache .cache/flopscan
 npm run build-site    # node scripts/build-site.mjs --data data/v1 --out _site
-npm test              # 93 tests, no network
+npm test              # 94 tests, no network
 npm run mutate        # break the code on purpose, require a failing test (docs/MUTATION.md)
 npm run secret-scan
 ```
@@ -105,6 +105,43 @@ reported as a fact about the period, not as an error: this tool can see that it 
 - Runtime history by bisection cannot see an upgrade that was rolled back to the same version between two probes.
 - Liveness probes are a proxy for uptime, not a measurement of it.
 - The settlement-price list can omit settlements; its sum is shown as context only.
+
+## What a live run showed
+
+From one scan on 19 Nov 2026, as of block 4,077,790 (00:57 UTC), read window 4,077,753 to 4,077,790. These are
+devnet figures at that block, not a forecast. The dashboard is the current view.
+
+**28 metrics agree, 6 disagree, 4 have no agreed value.**
+
+Block rewards, all sources agreeing (schedule, `RewardsDistributed` events, `blockRewards` counters and the
+explorer):
+
+- 47 distribution periods to block 4,060,800, each with a pot of 8,294,400 FLOP: 389,836,800 FLOP scheduled.
+- The documented miner leg (75%) of those pots is 292,377,600 FLOP. Of it, 37,324,799.999999999999999999 FLOP was
+  minted, in 6 periods (blocks 86,400 to 777,600), to 2 miners; per-miner sums match the explorer for both. In the
+  other 41 periods no miner was paid, and the runtime minted no miner leg for them. The validator leg (38,983,680
+  FLOP) and the agent and staker legs follow the documented split in every period.
+
+Also agreeing: compute settled to miners (35,817.16 FLOP, rounded down), the 8 newest settlement rows against their `Settled`
+events, total issuance, 13 active validators, 19,053 agent wallets, 16 sampled agent registrations against their
+events, faucet transactions between two scans (14 = 14), proofs verified (1 SP1, 0 for the other 8 verifiers),
+no forward market activity on either side, runtime `tzkv-runtime 1014027`, and three operator release digests
+against `ghcr.io`.
+
+Disagreeing (both readings are on the dashboard):
+
+| metric | chain | explorer |
+|---|---|---|
+| Registered miners | 526 | 525 |
+| Liveness probes issued (sum over miners) | 124,679 | 92,229; 93 of 486 miners agree row by row |
+| Liveness probes completed | 123,246 | 91,242 |
+| Compute channels | 53,562 | 53,271 |
+| Agent session keys | 17,991 | 17,969 |
+| Settlements (explorer row list vs explorer aggregate) | n/a | 12,479 vs 12,480 |
+
+No agreed value: agent identities (21,337 on chain, three ways, but no second source), the faucet balance and
+lifetime transaction count (the explorer does not track them), and runtime upgrade history (still being built,
+a few probes per run).
 
 ## Incremental, resumable, polite
 
