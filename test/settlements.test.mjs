@@ -62,3 +62,13 @@ test("settledMatches: positional and named event data; any field off fails", () 
   assert.ok(!settledMatches(r, ev(["0xab", "100", "0", "8", true])));
   assert.ok(!settledMatches(r, { section: "computeChannel", method: "TimedOutRefunded", data: ["0xab", "100", "0", "7"] }));
 });
+
+test("totalsUpTo includes a row settled exactly at the bound and excludes the next block", () => {
+  const cache = mergeRows({ cursor: 0, rows: {} }, [
+    { channelId: "0xa", settledBlock: 10, eventIndex: 1, minerPaid: "5", burned: "1", aggregateGn: "1", marketKind: "spot" },
+    { channelId: "0xb", settledBlock: 11, eventIndex: 1, minerPaid: "7", burned: "0", aggregateGn: "1", marketKind: "forward" },
+  ]);
+  assert.deepEqual(totalsUpTo(cache, 10), { miner_paid: "5", burned: "1", rows: "1", forward_rows: 0 });
+  assert.deepEqual(totalsUpTo(cache, 11), { miner_paid: "12", burned: "1", rows: "2", forward_rows: 1 });
+  assert.deepEqual(totalsUpTo(cache, 9), { miner_paid: "0", burned: "0", rows: "0", forward_rows: 0 });
+});

@@ -57,7 +57,7 @@ export function makeWorld(knobs = {}) {
     keys: async () => ({ miners: "3", agents: "42", channels: "77", funded_forward_offers: "0", forward_positions: "0", forward_bids: "0", forward_listings: "0" }),
     minerTables: async (h, { withMiners = true } = {}) => {
       const end = byHash(h) === head ? "hi" : "lo";
-      return { miners: withMiners ? Object.fromEntries(MINERS.map((m, i) => [m, { is_active: true, total_rewards_earned: i === 0 ? String(minerEarned) : "0", registered_at: "1" }])) : {}, ghost: ghost(end) };
+      return { miners: withMiners ? Object.fromEntries(MINERS.map((m, i) => [m, { is_active: true, total_rewards_earned: knobs.storageEarned ?? "0", registered_at: "1" }])) : {}, ghost: ghost(end) };
     },
     account: async (h) => { const n = byHash(h); return { free: String(10n ** 20n - BigInt(n)), reserved: "0", nonce: String(n) }; },
     verifiers: async (pin) => ({ pinned: pin, rows: ["settlementSp1Pallet", "settlementGroth16Pallet", "settlementRisc0Pallet", "settlementPlonky2Pallet", "settlementFFlonkPallet", "settlementUltraplonkPallet", "settlementUltrahonkPallet", "settlementEzklPallet", "settlementTeePallet"].map((pallet) => ({ pallet, present: true, disabled: false, vks: pallet === "settlementSp1Pallet" ? 1 : 0, tickets: 0 })) }),
@@ -95,7 +95,9 @@ export function makeWorld(knobs = {}) {
     "/api/transactions/sections": () => ({ data: [{ section: "settlementSp1Pallet", count: 1 }] }),
     "/api/transactions": () => [{ hash: H(77), blockHash: H(900), method: "submitProof", success: true, timestamp: T0, events: [{ section: "settlementSp1Pallet", method: "ProofVerified" }] }],
     "/api/settlement-prices": (q) => { const off = Number(q.get("offset") ?? 0); const lim = Number(q.get("limit") ?? 100); return { data: settle.slice(off, off + lim), pagination: { total: settle.length, limit: lim, offset: off, hasMore: off + lim < settle.length } }; },
-    [`/api/accounts/${SIGNER}`]: () => ({ address: SIGNER, balance: "0", liveBalance: false, txCount: lo + 1 + 3 }),
+    [`/api/accounts/${SIGNER}`]: () => (knobs.faucetExplorerBalance === undefined
+      ? { address: SIGNER, balance: "0", liveBalance: false, txCount: lo + 1 + 3 }
+      : { address: SIGNER, balance: knobs.faucetExplorerBalance, liveBalance: true, txCount: lo + 1 + 3 }),
     // The fake faucet signs one transaction per block (nonce at block n is n); every 50th block it
     // also receives a refill, which the list shows with another sender. Newest first, bare array.
     [`/api/accounts/${SIGNER}/transactions`]: (q) => {

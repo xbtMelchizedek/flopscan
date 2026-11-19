@@ -52,3 +52,31 @@ test("agent registration check needs the exact owner, not just the id", async ()
   assert.equal(agentRegisteredMatches(a, { section: "agentIdentity", method: "AgentUpdated", data: [a.agent_id, "5Owner1"] }), false);
   assert.equal(agentRegisteredMatches(a, { section: "agentIdentity", method: "AgentRegistered", data: [a.agent_id.toUpperCase(), "5Owner1"] }), false);
 });
+
+test("faucet balance: a tracked explorer balance must equal the chain at one window end", async () => {
+  const lo = 995;
+  const ok = byId(await run(makeWorld({ faucetExplorerBalance: String(10n ** 20n - BigInt(lo)) }))).get("faucet.balance");
+  assert.equal(ok.status, "match");
+  const bad = byId(await run(makeWorld({ faucetExplorerBalance: String(10n ** 20n - BigInt(lo) + 1n) }))).get("faucet.balance");
+  assert.equal(bad.status, "mismatch");
+  assert.equal(bad.value, null);
+  assert.equal(bad.delta, "1");
+});
+
+test("release entries with an unsafe component name are dropped, not published", async () => {
+  const w = makeWorld({ explorer: { "/api/operator-releases": () => ({
+    cli: { latest: "0.1.9", image: `ghcr.io/flop-labs/flop-core/cli:v0.1.9@sha256:${"a".repeat(64)}` },
+    "<img src=x>": { latest: "1", image: `ghcr.io/flop-labs/flop-core/x:v1@sha256:${"a".repeat(64)}` },
+    "Bad Name": { latest: "1", image: `ghcr.io/flop-labs/flop-core/y:v1@sha256:${"a".repeat(64)}` },
+  }) } });
+  const ids = [...byId(await run(w)).keys()].filter((id) => id.startsWith("release."));
+  assert.deepEqual(ids.sort(), ["release.cli", "release.history"]);
+});
+
+test("miner block rewards: storage totalRewardsEarned (0 on devnet) is context and does not decide", async () => {
+  const m = byId(await run(makeWorld())).get("miners.rewards_total");
+  assert.equal(m.status, "match");
+  const st = m.readings.find((r) => r.source === "rpc.storage");
+  assert.equal(st.value, "0");
+  assert.equal(st.context, true);
+});
