@@ -202,17 +202,19 @@ function minerMetrics(bundle) {
         const x = B(r.ghost[f]); const p = B(lo[f]); const q = B(hi[f]);
         return (p <= x && x <= q) || (q <= x && x <= p);
       });
-      const issued = B(r.ghost?.issued);
-      const completed = B(r.ghost?.completed);
-      rows.push({ miner: a, issued: String(issued), completed: String(completed), expired: String(B(r.ghost?.expired)),
-        completion_bps: issued > 0n ? String((completed * 10_000n) / issued) : null, chain_issued: hi?.issued ?? null, chain_completed: hi?.completed ?? null,
-        status: ok ? STATUS.MATCH : STATUS.MISMATCH, link: explorerLink.account(a) });
+      // Both readings per row; a completion rate only where they agree, computed from the chain.
+      const status = ok ? STATUS.MATCH : STATUS.MISMATCH;
+      const cIssued = hi ? n(hi.issued) : null;
+      const cCompleted = hi ? n(hi.completed) : null;
+      rows.push({ miner: a, chain_issued: cIssued, explorer_issued: n(r.ghost?.issued), chain_completed: cCompleted, explorer_completed: n(r.ghost?.completed),
+        completion_bps: ok && cIssued !== null && cCompleted !== null && BigInt(cIssued) > 0n ? String((BigInt(cCompleted) * 10_000n) / BigInt(cIssued)) : null,
+        status, link: explorerLink.account(a) });
     }
-    rows.sort((x, y) => (B(y.issued) > B(x.issued) ? 1 : B(y.issued) < B(x.issued) ? -1 : 0));
+    rows.sort((x, y) => (B(y.chain_issued) > B(x.chain_issued) ? 1 : B(y.chain_issued) < B(x.chain_issued) ? -1 : 0));
     const agreed = rows.filter((r) => r.status === STATUS.MATCH).length;
     out.push({ ...base, id: "miners.liveness_table", kind: "table", title: "Liveness by miner", status: agreed === rows.length ? STATUS.MATCH : STATUS.MISMATCH,
       summary: { checked: rows.length, agreed, chain_only: Object.keys(gHi).filter((a) => !rel.some((r) => r.miner === a)).length },
-      columns: ["miner", "issued", "completed", "completion_bps", "status"], rows: rows.slice(0, 50) });
+      columns: ["miner", "chain_issued", "explorer_issued", "chain_completed", "explorer_completed", "completion_bps", "status"], rows: rows.slice(0, 50) });
   }
   return out;
 }
@@ -286,8 +288,8 @@ function verifierMetrics(bundle) {
     out.push(metric({ ...base, id: `verifiers.${pallet}`, title: `${VERIFIER_LABEL[pallet]} proofs verified` }, r,
       { context: chainRow ? { vks: chainRow.vks, tickets: chainRow.tickets, present: chainRow.present } : null }));
   }
-  out.push({ group: "verifiers", id: "verifiers.table", kind: "table", title: "Proof verifiers", status: worst(rows.map((r) => r.status)), columns: ["label", "proofs_verified", "vks", "tickets", "status"], rows,
-    blind_spots: ["Only top-level calls are counted. A proof submitted inside utility.batch, proxy.proxy, sudo or multisig is indexed under that wrapper's section, so it is missed by both sides of this check.", "Tickets and vks are storage sizes at the window end, shown for context."] });
+  out.push({ group: "verifiers", id: "verifiers.table", kind: "table", title: "Proof verifiers", status: worst(rows.map((r) => r.status)), columns: ["label", "proofs_verified", "status"], rows,
+    blind_spots: ["Only top-level calls are counted. A proof submitted inside utility.batch, proxy.proxy, sudo or multisig is indexed under that wrapper's section, so it is missed by both sides of this check.", "Registered verifying keys and tickets per pallet are in the JSON (vks, tickets) as chain-only context; they have no second source, so the page does not show them."] });
   return out;
 }
 

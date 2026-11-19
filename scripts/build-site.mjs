@@ -77,13 +77,13 @@ function cell(col, v, row) {
   return `<td>${esc(v)}</td>`;
 }
 
-const COL_TEXT = { block: "Block", scheduled: "Scheduled (FLOP)", miner_share: "Miner leg minted (FLOP)", miner_leg_unminted: "Miner leg not minted (FLOP)", miners_paid: "Miners paid", miner: "Miner", rpc_storage: "Chain storage (FLOP)", rpc_events: "Chain events (FLOP)", explorer: "Explorer (FLOP)", status: "Status", issued: "Probes issued", completed: "Completed", completion_bps: "Completion", label: "Verifier", proofs_verified: "Proofs verified", vks: "Keys", tickets: "Tickets", spec_version: "Spec version", from_block: "From block", to_block: "To block", code_updated_block: "CodeUpdated in block", component: "Component", version: "Version", first_seen_block: "First seen at block", first_seen_utc: "First seen" };
+const COL_TEXT = { block: "Block", scheduled: "Scheduled (FLOP)", miner_share: "Miner leg minted (FLOP)", miner_leg_unminted: "Miner leg not minted (FLOP)", miners_paid: "Miners paid", miner: "Miner", rpc_storage: "Chain storage (FLOP)", rpc_events: "Chain events (FLOP)", explorer: "Explorer (FLOP)", status: "Status", chain_issued: "Issued (chain)", explorer_issued: "Issued (explorer)", chain_completed: "Completed (chain)", explorer_completed: "Completed (explorer)", completion_bps: "Completion (when both agree)", label: "Verifier", proofs_verified: "Proofs verified", vks: "Keys", tickets: "Tickets", spec_version: "Spec version", from_block: "From block", to_block: "To block", code_updated_block: "CodeUpdated in block", component: "Component", version: "Version", first_seen_block: "First seen at block", first_seen_utc: "First seen" };
 
 function table(t) {
   const numeric = (c) => !["miner", "status", "label", "component", "version", "first_seen_utc"].includes(c);
   const head = t.columns.map((c) => `<th scope="col"${numeric(c) ? ' class="num"' : ""}>${esc(COL_TEXT[c] ?? c)}</th>`).join("");
   const body = t.rows.map((r) => `<tr>${t.columns.map((c) => cell(c, r[c], r)).join("")}</tr>`).join("\n");
-  const notes = [t.note, t.summary ? `${t.summary.agreed} of ${t.summary.checked} miners agree between chain and explorer${t.summary.chain_only ? `; ${t.summary.chain_only} more are on chain only` : ""}. Top 50 by probes issued.` : null, ...(t.blind_spots ?? [])].filter(Boolean);
+  const notes = [t.note, t.summary ? `${t.summary.agreed} of ${t.summary.checked} miners agree between chain and explorer${t.summary.chain_only ? `; ${t.summary.chain_only} more are on chain only` : ""}. Top 50 by probes issued on chain. Both readings are shown; a completion rate only where they agree.` : null, ...(t.blind_spots ?? [])].filter(Boolean);
   return `<div class="table-wrap" id="${esc(t.id)}"><table><caption>${esc(t.title)} ${badge(t.status)}${notes.map((n) => `<span class="sub">${esc(n)}</span>`).join("")}</caption><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${t.columns.length}">No rows.</td></tr>`}</tbody></table></div>`;
 }
 

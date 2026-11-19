@@ -80,3 +80,17 @@ test("miner block rewards: storage totalRewardsEarned (0 on devnet) is context a
   assert.equal(st.value, "0");
   assert.equal(st.context, true);
 });
+
+test("liveness table: a disagreeing row shows both readings and no completion rate", async () => {
+  const MINER = "5Fminer1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const w = makeWorld({ explorer: { "/api/miner-reliability": () => [{ miner: MINER, ghost: { issued: 7, completed: 7, expired: 0, incorrect: 0 } }] } });
+  const t = byId(await run(w)).get("miners.liveness_table");
+  const row = t.rows.find((r) => r.miner === MINER);
+  assert.equal(row.status, "mismatch");
+  assert.equal(row.explorer_issued, "7");
+  assert.equal(row.chain_issued, "101");
+  assert.equal(row.completion_bps, null);
+  const good = byId(await run(makeWorld())).get("miners.liveness_table").rows.find((r) => r.miner === MINER);
+  assert.equal(good.status, "match");
+  assert.equal(good.completion_bps, String((100n * 10_000n) / 101n));
+});
