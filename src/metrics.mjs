@@ -40,7 +40,7 @@ export function equalsEither(lo, hi, observed) {
 }
 
 function metric(base, result, extra = {}) {
-  return { ...base, status: result.status, value: result.value ?? null, method: result.method, delta: result.delta ?? null, readings: result.readings, ...extra };
+  return { ...base, status: result.status, value: result.value ?? null, method: result.method, delta: result.delta ?? null, ...(result.reason ? { reason: result.reason } : {}), readings: result.readings, ...extra };
 }
 
 function chainPair(bundle, path, label) {
@@ -139,34 +139,41 @@ function minerMetrics(bundle) {
     [reading("rpc.keys", n(c.hi?.keys?.miners), { label: "minerStaking.miners map size", ...at(bundle.window?.hi, true) }),
       reading("explorer", n(ex.totals?.miners), { label: "/api/miners pagination.total (includes retired)", context: true })]));
 
-  // Per-miner rewards: chain minerStaking.totalRewardsEarned vs explorer totalRewards vs blockRewards events.
+  // Per-miner block rewards: blockRewards.MinerRewarded events summed per miner vs the explorer's
+  // per-miner totalRewards. minerStaking.totalRewardsEarned is shown for context only: on devnet it
+  // stays 0 for miners the events pay, so it does not count block rewards.
   const chainMiners = c.hi?.minerTables?.miners ?? null;
   const exMiners = Array.isArray(ex.miners) ? ex.miners : null;
-  const eventSums = new Map();
-  for (const p of c.rewards?.periods ?? []) for (const r of p.miner_rewards ?? []) eventSums.set(r.miner, (eventSums.get(r.miner) ?? 0n) + B(r.amount));
-  if (chainMiners && exMiners) {
-    const left = new Map();
-    const right = new Map();
-    const ids = new Set([...Object.keys(chainMiners).filter((a) => chainMiners[a].total_rewards_earned !== "0"), ...exMiners.filter((m) => String(m.totalRewards) !== "0").map((m) => m.address), ...eventSums.keys()]);
+  const periodsRead = Array.isArray(c.rewards?.periods) ? c.rewards.periods : null;
+  let eventSums = null;
+  if (periodsRead) {
+    eventSums = new Map();
+    for (const p of periodsRead) for (const r of p?.miner_rewards ?? []) eventSums.set(r.miner, (eventSums.get(r.miner) ?? 0n) + B(r.amount));
+  }
+  if (eventSums && exMiners) {
     const exBy = new Map(exMiners.map((m) => [m.address, m]));
+    const ids = new Set([...exMiners.filter((m) => n(m.totalRewards) !== null && n(m.totalRewards) !== "0").map((m) => m.address), ...eventSums.keys()]);
     const rows = [];
     for (const a of ids) {
-      const chainV = chainMiners[a]?.total_rewards_earned ?? "0";
-      const exV = exBy.has(a) ? n(exBy.get(a).totalRewards) : "0";
       const evV = String(eventSums.get(a) ?? 0n);
-      left.set(a, { earned: chainV });
-      right.set(a, { earned: exV });
-      const r = reconcileExact([reading("rpc.storage", chainV), reading("explorer", exV), reading("rpc.events", evV)]);
-      rows.push({ miner: a, rpc_storage: chainV, explorer: exV, rpc_events: evV, status: r.status, link: explorerLink.account(a) });
+      const exV = exBy.has(a) ? n(exBy.get(a).totalRewards) : "0";
+      const stV = chainMiners ? n(chainMiners[a]?.total_rewards_earned ?? "0") : null;
+      const r = reconcileExact([reading("rpc.events", evV), reading("explorer", exV)]);
+      rows.push({ miner: a, rpc_events: evV, explorer: exV, rpc_storage: stV, status: r.status, link: explorerLink.account(a) });
     }
     rows.sort((x, y) => (B(y.rpc_events) > B(x.rpc_events) ? 1 : B(y.rpc_events) < B(x.rpc_events) ? -1 : 0));
-    const st = worst(rows.map((r) => r.status));
-    out.push({ ...base, unit: "FLOP", id: "miners.rewards_total", title: "Rewards earned by miners", ...metric({}, reconcileExact([
-      reading("rpc.storage", String(sumBig(rows.map((r) => r.rpc_storage)))), reading("explorer", String(sumBig(rows.map((r) => r.explorer)))), reading("rpc.events", String(sumBig(rows.map((r) => r.rpc_events))), { label: "MinerRewarded events in reward periods" }),
-    ])), note: "minerStaking.totalRewardsEarned vs explorer totalRewards vs blockRewards.MinerRewarded, summed over miners that earned anything." });
-    out.push({ ...base, id: "miners.rewards_table", kind: "table", title: "Miners with rewards", status: st, columns: ["miner", "rpc_storage", "rpc_events", "explorer", "status"], rows });
+    const pin = c.rewards?.state?.pinned;
+    out.push(metric({ ...base, unit: "FLOP", id: "miners.rewards_total", title: "Block rewards paid to miners",
+      note: "blockRewards.MinerRewarded events summed over every distribution period, vs the explorer's per-miner totalRewards summed. minerStaking.totalRewardsEarned is context: it does not track block rewards on devnet." },
+    reconcileExact([
+      reading("rpc.events", String(sumBig(rows.map((r) => r.rpc_events))), { label: "MinerRewarded events, all periods", block: pin?.number, hash: pin?.hash }),
+      reading("explorer", String(sumBig(rows.map((r) => r.explorer))), { label: "/api/miners totalRewards, summed" }),
+      reading("rpc.storage", chainMiners ? String(sumBig(Object.values(chainMiners).map((m) => m?.total_rewards_earned))) : null, { label: "minerStaking.totalRewardsEarned, summed", context: true }),
+    ])));
+    out.push({ ...base, id: "miners.rewards_table", kind: "table", title: "Miners paid block rewards", status: worst(rows.map((r) => r.status)), columns: ["miner", "rpc_events", "explorer", "status"], rows });
   } else {
-    out.push(metric({ ...base, unit: "FLOP", id: "miners.rewards_total", title: "Rewards earned by miners" }, reconcileExact([reading("rpc.storage", null), reading("explorer", null)])));
+    out.push(metric({ ...base, unit: "FLOP", id: "miners.rewards_total", title: "Block rewards paid to miners" },
+      reconcileExact([reading("rpc.events", null, { label: "reward periods not read this run" }), reading("explorer", exMiners ? String(sumBig(exMiners.map((m) => m.totalRewards))) : null, { label: "/api/miners totalRewards, summed" })])));
   }
 
   // Liveness: ghost (synthetic) tasks issued vs completed. A proxy for uptime, not a measurement of it.
@@ -220,20 +227,15 @@ function computeMetrics(bundle) {
   const base = { group: "compute" };
   const lo = bundle.window?.lo;
   const hi = bundle.window?.hi;
-  // Miner paid: chain counter at lo and at hi, vs explorer rows summed up to exactly those blocks.
-  const loR = reconcileExact([
+  // Miner paid: the chain counter at both window ends vs the explorer's aggregate, read inside the
+  // window. The sum of the explorer's settlement-price rows is context: that list can omit rows.
+  const r = reconcileBracketed(
     reading("rpc.storage", n(c.lo?.counters?.compute?.miner_paid), { label: "computeChannel.totalMinerPaid", ...at(lo, true) }),
-    reading("explorer", s ? n(s.lo?.miner_paid) : null, { label: `sum of /api/settlement-prices minerPaid, settledBlock <= ${lo?.number}` }),
-  ]);
-  const hiR = reconcileExact([
     reading("rpc.storage", n(c.hi?.counters?.compute?.miner_paid), { label: "computeChannel.totalMinerPaid", ...at(hi, true) }),
-    reading("explorer", s ? n(s.hi?.miner_paid) : null, { label: `sum of /api/settlement-prices minerPaid, settledBlock <= ${hi?.number}` }),
-  ]);
-  const st = worst([loR.status, hiR.status]);
-  out.push({ ...base, unit: "FLOP", id: "compute.miner_paid", title: "Compute settled to miners", status: st,
-    value: st === STATUS.MATCH ? hiR.value : null, method: "exact at both window ends", delta: hiR.delta ?? loR.delta ?? null,
-    readings: [...loR.readings, ...hiR.readings, reading("explorer", n(ex.inferenceSpend?.totalSpentRaw), { label: "/api/inference-spend totalSpentRaw", context: true })],
-    note: "FLOP paid to miners for inference, cumulative. Each settlement row is also rechecked against the Settled event in its block (see sampled rows)." });
+    reading("explorer", n(ex.inferenceSpend?.totalSpentRaw), { label: "/api/inference-spend totalSpentRaw" }));
+  out.push(metric({ ...base, unit: "FLOP", id: "compute.miner_paid", title: "Compute settled to miners",
+    note: "FLOP paid to miners for inference, cumulative. The newest settlement rows are also rechecked one by one against the Settled event in their block (Settlement rows checked on chain)." },
+  { ...r, readings: [...r.readings, reading("explorer", s ? n(s.hi?.miner_paid) : null, { label: `sum of /api/settlement-prices minerPaid rows, settledBlock <= ${hi?.number}`, context: true })] }));
 
   out.push(metric({ ...base, unit: "count", id: "compute.settlements", title: "Settlements" }, reconcileBracketed(
     reading("explorer", s ? n(s.lo?.rows) : null, { label: `settlement rows, settledBlock <= ${lo?.number}` }),
@@ -324,9 +326,23 @@ function agentMetrics(bundle) {
       reading("rpc.keys", n(c.hi?.keys?.agents), { label: "agentIdentity.agents map size", ...at(hi, true) }),
       reading("rpc.storage", n(c.hi?.counters?.agents?.global_total_agents), { label: "agentIdentity.globalStats.totalAgents", ...at(hi, true) }),
     ])),
+    ...agentRowMetric(bundle),
     bracketMetric(bundle, { group: "agents", unit: "count", id: "agents.wallets", title: "Agent wallets" }, "wallets.total_wallets", "agentWallet.totalWallets",
       ex.totals?.agent_wallets, "/api/agent-wallets pagination.total", [reading("explorer", n(ex.stats?.activeAgents), { label: "/api/stats activeAgents", context: true })]),
   ];
+}
+
+function agentRowMetric(bundle) {
+  const ck = bundle.agentChecks;
+  if (!ck) return [];
+  const total = n(ck.total); const agreed = n(ck.agreed);
+  const ok = total !== null && agreed !== null && BigInt(agreed) <= BigInt(total);
+  const status = !ok || total === "0" ? STATUS.PENDING : agreed === total ? STATUS.MATCH : STATUS.MISMATCH;
+  return [{ group: "agents", unit: "count", id: "agents.registration_rows", title: "Agent registrations checked against events", status,
+    value: status === STATUS.MATCH ? agreed : null, method: "rowwise", delta: status === STATUS.MISMATCH ? String(BigInt(total) - BigInt(agreed)) : null,
+    readings: [reading("rpc.storage", total, { label: "identities sampled from agentIdentity.agents (all runs)" }), reading("rpc.events", agreed, { label: "of those, with an AgentRegistered event (same id and owner) in their registeredAt block" })],
+    detail: { checked_this_run: Array.isArray(ck.run) ? ck.run.length : 0, disagreements: Array.isArray(ck.failed) ? ck.failed.slice(0, 20) : [] },
+    note: "A row check, not a count: it shows that identities in storage were registered where storage says. The explorer has no identity count, so the count above stays one source." }];
 }
 
 // ---------------------------------------------------------------- faucet
@@ -349,19 +365,21 @@ function faucetMetrics(bundle) {
   balR.method = "exact at either window end";
   balR.readings = [...balR.readings, reading("faucet-service", f.service?.balanceFlop == null ? null : String(f.service.balanceFlop), { label: "faucet /limits balanceFlop (whole FLOP, about a minute stale)", context: true })];
   out.push(metric({ ...base, unit: "FLOP", id: "faucet.balance", title: "Faucet balance", link: explorerLink.account(f.signer), context: { signer: f.signer } }, balR));
-  out.push(metric({ ...base, unit: "count", id: "faucet.transactions", title: "Faucet transactions sent", link: explorerLink.account(f.signer), note: "The signer's nonce on chain vs the explorer's transaction count for the same account." },
-    reconcileBracketed(reading("rpc.storage", n(f.chain_lo?.nonce), { label: "system.account.nonce", ...at(lo, true) }), reading("rpc.storage", n(f.chain_hi?.nonce), { label: "system.account.nonce", ...at(hi, true) }),
-      reading("explorer", n(f.explorer?.txCount), { label: `/api/accounts/${f.signer} txCount` }))));
-  // Flow over the last ~24 h, from our own history of earlier runs.
-  const flow = bundle.faucetFlow;
-  if (flow) {
-    const note = `From block ${flow.from_block} to ${flow.to_block} (${flow.hours} h), from this scanner's history of earlier runs. The chain gives a range (each run read both ends of its window); the explorer's figure must fall inside it.`;
-    out.push(metric({ ...base, unit: "count", id: "faucet.transactions_window", title: "Faucet transactions in the window", note, window: flow },
-      reconcileBracketed(reading("rpc.storage", n(flow.chain_tx_range?.[0]), { label: "nonce change, low end" }), reading("rpc.storage", n(flow.chain_tx_range?.[1]), { label: "nonce change, high end" }), reading("explorer", n(flow.explorer_tx_delta), { label: "txCount change" }))));
-    out.push(metric({ ...base, unit: "FLOP", id: "faucet.outflow_window", title: "Faucet net outflow in the window", note, window: flow },
-      reconcileBracketed(reading("rpc.storage", n(flow.chain_outflow_range?.[0]), { label: "balance decrease, low end" }), reading("rpc.storage", n(flow.chain_outflow_range?.[1]), { label: "balance decrease, high end" }), reading("explorer", n(flow.explorer_outflow), { label: "explorer balance decrease" }))));
+  out.push(metric({ ...base, unit: "count", id: "faucet.transactions", title: "Faucet transactions signed", link: explorerLink.account(f.signer),
+    note: "The signer's nonce on chain. The explorer's txCount also counts transfers into the account, so it is context, not a second source; the window below is the cross-check." },
+  reconcileExact([reading("rpc.storage", n(f.chain_lo?.nonce), { label: "system.account.nonce", ...at(lo, true) }),
+    reading("explorer", n(f.explorer?.txCount), { label: `/api/accounts/${f.signer} txCount (all transactions touching the account)`, context: true })])));
+  const w = bundle.faucetWindow;
+  if (w) {
+    const hours = Math.round(((w.to_ms - w.from_ms) / 36e5) * 10) / 10;
+    out.push(metric({ ...base, unit: "count", id: "faucet.transactions_window", title: "Faucet transactions since the last scan", link: explorerLink.account(f.signer),
+      window: { from_block: w.from_block, to_block: w.to_block, hours },
+      note: `Blocks ${w.from_block} to ${w.to_block}: the change in the signer's nonce vs the transactions the explorer lists as sent by the signer in the same blocks. A wrapped call still has the faucet as sender, so it is counted on both sides.` },
+    reconcileExact([reading("rpc.storage", n(w.chain_nonce_delta), { label: "nonce change between the two window starts", block: w.to_block }),
+      reading("explorer", n(w.explorer_sent), { label: "transactions with sender = signer in the same blocks" })])));
   } else {
-    out.push(metric({ ...base, unit: "count", id: "faucet.transactions_window", title: "Faucet transactions in the window", note: "Needs two runs of history." }, reconcileExact([reading("rpc.storage", null), reading("explorer", null)])));
+    out.push(metric({ ...base, unit: "count", id: "faucet.transactions_window", title: "Faucet transactions since the last scan", note: "Needs a previous scan to measure from." },
+      reconcileExact([reading("rpc.storage", null), reading("explorer", null)])));
   }
   return out;
 }

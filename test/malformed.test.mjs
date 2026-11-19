@@ -50,7 +50,10 @@ test("settlement rows with a float amount: the settlement source is dropped, not
   const bad = (q) => ({ data: [{ channelId: "0x1", settledBlock: 999, minerPaid: "1.5", burned: "0", aggregateGn: "1" }], pagination: { total: 1, hasMore: false } });
   const { doc, byId } = await runWith({ explorer: { "/api/settlement-prices": bad } });
   assert.match(doc.sources.errors["explorer.settlements"], /non-integer/);
-  assert.equal(byId.get("compute.miner_paid").status, "pending");
+  // The row list only feeds a context reading and the single-indexer settlement count.
+  const rowSum = byId.get("compute.miner_paid").readings.find((r) => r.context && /settlement-prices/.test(r.label));
+  assert.equal(rowSum.value, null);
+  assert.equal(byId.get("compute.settlements").status, "pending");
   noNumbersUnlessMatch(doc);
 });
 

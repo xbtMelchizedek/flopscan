@@ -13,6 +13,7 @@ import { extendRuntimeHistory } from "./runtime.mjs";
 import { mergeRows, REFETCH_MARGIN_BLOCKS, settledMatches, totalsUpTo } from "./settlements.mjs";
 import { periodBoundaries } from "./schedule.mjs";
 import { createExplorer } from "./sources/explorer.mjs";
+import { faucetWindow, walkSignerTxs } from "./faucet.mjs";
 import * as rpc from "./sources/rpc.mjs";
 import { createStore, readJson, writeJsonAtomic } from "./store.mjs";
 import { STATUS } from "./reconcile.mjs";
@@ -22,6 +23,7 @@ export const SCHEMA_VERSION = "1.0.0";
 export const FAUCET = "https://faucet.flop.network";
 const GHCR = "https://ghcr.io";
 const SETTLEMENT_SAMPLE = 8;
+const AGENT_SAMPLE = 8;
 const HISTORY_KEEP = 7 * 48; // a week of half-hourly runs
 const DISCLAIMER = "Devnet data, not financial information. Unaudited. Devnet FLOP has no value.";
 
@@ -47,6 +49,7 @@ export function apiReaders(api) {
     period: (b) => readPeriod(api, b),
     specAt: (b) => rpc.specAt(api, b),
     blockEvents: (x) => rpc.readBlockEvents(api, x),
+    agents: (hash, seed, k) => rpc.sampleAgents(api, hash, seed, k),
     disconnect: () => api.disconnect(),
   };
 }
@@ -111,7 +114,15 @@ export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explo
       const signer = limits?.faucet?.signer;
       if (typeof signer !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{46,48}$/.test(signer)) throw new Error("faucet /limits: no signer address");
       const acct = await ex.account(signer);
-      bundle.faucet = { signer, service: { balanceFlop: limits.faucet.balanceFlop ?? null, asOf: limits.asOf ?? null }, explorer: { balance: acct?.balance == null ? null : String(acct.balance), txCount: acct?.txCount ?? null } };
+      // liveBalance false: the explorer does not track this account's balance, so its "0" is unread.
+      const exBalance = acct?.liveBalance === false || acct?.balance == null ? null : String(acct.balance);
+      bundle.faucet = { signer, service: { balanceFlop: limits.faucet.balanceFlop ?? null, asOf: limits.asOf ?? null }, explorer: { balance: exBalance, txCount: acct?.txCount ?? null } };
+      const prevWin = store.get("faucet-window", null);
+      if (prevWin) {
+        try {
+          bundle.faucetWalk = await walkSignerTxs((offset, limit) => ex.get(`/api/accounts/${encodeURIComponent(signer)}/transactions?limit=${limit}&offset=${offset}`), signer, prevWin.time_ms);
+        } catch (e) { note("explorer.faucet_txs", e); }
+      }
     } catch (e) { note("faucet", e); }
     // Verifier calls as the explorer indexed them (only sections that have any).
     try {
@@ -182,6 +193,26 @@ export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explo
         bundle.runtime = rt;
       } catch (e) { note("rpc.runtime", e); }
 
+      // Agent identities: a sample from storage, each checked for its AgentRegistered event. Cached:
+      // an identity's registration block does not change.
+      log("phase agents");
+      try {
+        const sample = await api.agents(hi.hash, hi.hash, AGENT_SAMPLE);
+        if (sample) {
+          const cache = store.get("agent-checks", {});
+          const run = [];
+          for (const a of sample) {
+            if (cache[a.agent_id] === undefined) {
+              const evs = Number.isSafeInteger(a.registered_at) && a.registered_at > 0 ? await api.blockEvents(a.registered_at) : [];
+              cache[a.agent_id] = { block: a.registered_at, ok: evs.some((e) => agentRegisteredMatches(a, e)) };
+              store.put("agent-checks", cache); unit(`agent ${a.agent_id}`);
+            }
+            run.push({ agent_id: a.agent_id, ...cache[a.agent_id] });
+          }
+          bundle.agentChecks = { run, total: Object.keys(cache).length, agreed: Object.values(cache).filter((c) => c.ok).length, failed: Object.entries(cache).filter(([, c]) => !c.ok).slice(0, 20).map(([id, c]) => ({ agent_id: id, block: c.block })) };
+        }
+      } catch (e) { note("rpc.agents", e); }
+
       // Settlement rows: the newest few, each checked against its block's events.
       log("phase settlement rows");
       if (bundle.settlementsNewest) {
@@ -229,21 +260,18 @@ export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explo
   // 4. Releases: the explorer's pinned digest vs the registry's digest for the same tag.
   try { bundle.releases = await checkReleases(bundle.explorer.operatorReleases, getJson, { fetchImpl }); } catch (e) { note("ghcr", e); }
 
-  // 5. History and the faucet flow window.
+  // 5. Faucet window, release history.
   const asOfBlock = bundle.window.hi ?? null;
-  const history = store.get("history", []);
   const runNow = now();
+  const lo = bundle.window.lo;
+  if (lo && bundle.faucet?.chain_lo?.nonce) {
+    const cur = { block: lo.number, time_ms: lo.time_ms, nonce: bundle.faucet.chain_lo.nonce };
+    bundle.faucetWindow = faucetWindow(store.get("faucet-window", null), cur, bundle.faucetWalk);
+    store.put("faucet-window", cur);
+  }
   if (asOfBlock) {
-    const f = bundle.faucet;
-    const entry = { block: asOfBlock.number, time_utc: iso(asOfBlock.time_ms), faucet: f ? {
-      nonce_lo: f.chain_lo?.nonce ?? null, nonce_hi: f.chain_hi?.nonce ?? null, free_lo: f.chain_lo?.free ?? null, free_hi: f.chain_hi?.free ?? null,
-      explorer_tx: f.explorer?.txCount == null ? null : String(f.explorer.txCount), explorer_balance: f.explorer?.balance ?? null,
-    } : null };
-    bundle.faucetFlow = faucetFlow(history, entry, asOfBlock.time_ms);
-    bundle.releaseHistory = updateReleaseHistory(store.get("release-history", []), bundle.releases, entry);
+    bundle.releaseHistory = updateReleaseHistory(store.get("release-history", []), bundle.releases, { block: asOfBlock.number, time_utc: iso(asOfBlock.time_ms) });
     store.put("release-history", bundle.releaseHistory);
-    history.push(entry);
-    store.put("history", history.slice(-HISTORY_KEEP));
   }
 
   if (bundlePath) writeJsonAtomic(bundlePath, bundle); // raw readings, for recording test fixtures
@@ -262,35 +290,21 @@ export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explo
     disclaimer: DISCLAIMER,
     metrics,
   };
+  if (asOfBlock) {
+    const history = store.get("history", []);
+    history.push({ block: asOfBlock.number, time_utc: iso(asOfBlock.time_ms), ...doc.summary });
+    store.put("history", history.slice(-HISTORY_KEEP));
+  }
   writeJsonAtomic(join(outDir, "latest.json"), doc);
   writeJsonAtomic(join(outDir, "history.json"), { $schema: SCHEMA_ID, schema_version: SCHEMA_VERSION, network, runs: store.get("history", []) });
   return doc;
 }
 
-/**
- * Faucet flow between the oldest run in the last 24 h and this one. Each run read the chain at both
- * ends of its window and the explorer once inside it, so the chain gives a range for the change
- * and the explorer one number; they agree when the number is inside the range.
- */
-export function faucetFlow(history, entry, nowMs) {
-  const usable = (h) => h?.faucet && ["nonce_lo", "nonce_hi", "free_lo", "free_hi", "explorer_tx", "explorer_balance"].every((k) => typeof h.faucet[k] === "string" && /^\d+$/.test(h.faucet[k]));
-  if (!usable(entry)) return null;
-  const dayAgo = nowMs - 24 * 3600 * 1000;
-  const start = history.find((h) => usable(h) && Date.parse(h.time_utc) >= dayAgo && h.block < entry.block);
-  if (!start) return null;
-  const a = start.faucet, b = entry.faucet;
-  const range = (x0, x1, y0, y1, sign) => { // change from {x0,x1} to {y0,y1}; sign -1 for outflow
-    const vals = [BigInt(y0) - BigInt(x0), BigInt(y0) - BigInt(x1), BigInt(y1) - BigInt(x0), BigInt(y1) - BigInt(x1)].map((v) => v * BigInt(sign));
-    return [vals.reduce((m, v) => (v < m ? v : m)), vals.reduce((m, v) => (v > m ? v : m))];
-  };
-  const [txLo, txHi] = range(a.nonce_lo, a.nonce_hi, b.nonce_lo, b.nonce_hi, 1);
-  const [outLo, outHi] = range(a.free_lo, a.free_hi, b.free_lo, b.free_hi, -1);
-  const hours = Math.round(((Date.parse(entry.time_utc) - Date.parse(start.time_utc)) / 36e5) * 10) / 10;
-  return {
-    from_block: start.block, to_block: entry.block, from_utc: start.time_utc, to_utc: entry.time_utc, hours,
-    chain_tx_range: [String(txLo), String(txHi)], explorer_tx_delta: String(BigInt(b.explorer_tx) - BigInt(a.explorer_tx)),
-    chain_outflow_range: [String(outLo), String(outHi)], explorer_outflow: String(BigInt(a.explorer_balance) - BigInt(b.explorer_balance)),
-  };
+/** Does a chain event record the registration of this storage row? Exact id and owner. */
+export function agentRegisteredMatches(agent, ev) {
+  if (!ev || ev.section !== "agentIdentity" || ev.method !== "AgentRegistered") return false;
+  const d = Array.isArray(ev.data) ? { agent_id: ev.data[0], owner: ev.data[1] } : ev.data ?? {};
+  return String(d.agent_id ?? d.agentId) === agent.agent_id && String(d.owner) === agent.owner;
 }
 
 export function updateReleaseHistory(prev, releases, entry) {

@@ -46,7 +46,13 @@ export async function countKeys(api, entry, hash) {
 export async function readCounters(api, hash) {
   const at = await api.at(hash);
   const q = at.query;
-  const opt = async (fn) => { try { return await fn(); } catch { return null; } };
+  // null only when this runtime has no such item. A failed read (503, lagging backend) throws, so
+  // it becomes a recorded error and a pending metric, never a silently missing number.
+  const opt = async (fn) => {
+    let call;
+    try { call = fn(); } catch (e) { if (e instanceof TypeError) return null; throw e; }
+    return call;
+  };
   const [
     minerPaid, burned, refunded, gnCredited, escrowReserved, bondLocked, bondReleased, bondSlashed,
     agentCount, nextAgentId, globalStats, totalWallets, totalMiners, ghostIssued, ghostCompleted, ghostExpired, ghostIncorrect,
@@ -81,15 +87,16 @@ export async function readCounters(api, hash) {
 /** Storage-map sizes that have a counterpart elsewhere. */
 export async function readKeyCounts(api, hash) {
   const q = api.query;
-  const n = async (entry) => { try { return String(await countKeys(api, entry, hash)); } catch { return null; } };
+  const m = (pallet, item) => q[pallet]?.[item] ?? null;
+  const n = async (entry) => (entry ? String(await countKeys(api, entry, hash)) : null);
   return {
-    miners: await n(q.minerStaking.miners),
-    agents: await n(q.agentIdentity.agents),
-    channels: await n(q.computeChannel.channels),
-    funded_forward_offers: await n(q.computeChannel.fundedForwardOffers),
-    forward_positions: await n(q.computeChannel.forwardPositions),
-    forward_bids: await n(q.computeChannel.forwardBids),
-    forward_listings: await n(q.computeChannel.forwardListings),
+    miners: await n(m("minerStaking", "miners")),
+    agents: await n(m("agentIdentity", "agents")),
+    channels: await n(m("computeChannel", "channels")),
+    funded_forward_offers: await n(m("computeChannel", "fundedForwardOffers")),
+    forward_positions: await n(m("computeChannel", "forwardPositions")),
+    forward_bids: await n(m("computeChannel", "forwardBids")),
+    forward_listings: await n(m("computeChannel", "forwardListings")),
   };
 }
 
@@ -133,4 +140,25 @@ export async function specAt(api, n) {
   const hash = await api.rpc.chain.getBlockHash(n);
   const v = await api.rpc.state.getRuntimeVersion(hash);
   return { block: n, hash: hash.toHex(), spec_name: v.specName.toString(), spec_version: v.specVersion.toNumber() };
+}
+
+/**
+ * A sample of `k` agent identities at one block, starting at a storage key derived from `seedHex`
+ * (the block hash), so each run checks a different slice. Rows: { agent_id, owner, registered_at }.
+ */
+export async function sampleAgents(api, hash, seedHex, k = 8) {
+  const entry = api.query.agentIdentity?.agents;
+  if (!entry) return null;
+  const prefix = entry.keyPrefix();
+  const start = prefix + seedHex.replace(/^0x/, "").slice(0, 32);
+  const keys = await api.rpc.state.getKeysPaged(prefix, k, start, hash);
+  const at = await api.at(hash);
+  const out = [];
+  for (const key of keys) {
+    const id = `0x${key.toHex().slice(-64)}`; // Blake2_128Concat: the H256 id is the last 32 bytes
+    const v = (await at.query.agentIdentity.agents(id)).toJSON();
+    if (!v) continue;
+    out.push({ agent_id: id, owner: String(v.owner), registered_at: Number(v.registeredAt) });
+  }
+  return out;
 }

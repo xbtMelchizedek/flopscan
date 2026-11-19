@@ -33,3 +33,22 @@ test("release history records a version only after explorer and registry digests
   assert.equal(good.get("release.cli").status, "match");
   assert.deepEqual(good.get("release.history").rows.map((r) => [r.component, r.version]), [["cli", "0.1.9"]]);
 });
+
+test("an agent in storage whose registeredAt block has no AgentRegistered event is a mismatch", async () => {
+  const ok = byId(await run(makeWorld())).get("agents.registration_rows");
+  assert.equal(ok.status, "match");
+  assert.equal(ok.value, "3");
+  const bad = byId(await run(makeWorld({ dropAgentEvent: 402 }))).get("agents.registration_rows");
+  assert.equal(bad.status, "mismatch");
+  assert.equal(bad.value, null);
+  assert.deepEqual(bad.detail.disagreements.map((d) => d.block), [402]);
+});
+
+test("agent registration check needs the exact owner, not just the id", async () => {
+  const { agentRegisteredMatches } = await import("../src/scan.mjs");
+  const a = { agent_id: `0x${"1".repeat(64)}`, owner: "5Owner1" };
+  assert.equal(agentRegisteredMatches(a, { section: "agentIdentity", method: "AgentRegistered", data: [a.agent_id, "5Owner1"] }), true);
+  assert.equal(agentRegisteredMatches(a, { section: "agentIdentity", method: "AgentRegistered", data: [a.agent_id, "5owner1"] }), false);
+  assert.equal(agentRegisteredMatches(a, { section: "agentIdentity", method: "AgentUpdated", data: [a.agent_id, "5Owner1"] }), false);
+  assert.equal(agentRegisteredMatches(a, { section: "agentIdentity", method: "AgentRegistered", data: [a.agent_id.toUpperCase(), "5Owner1"] }), false);
+});

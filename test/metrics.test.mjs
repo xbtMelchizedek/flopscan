@@ -6,12 +6,15 @@ import { test } from "node:test";
 import Ajv from "ajv";
 import fc from "fast-check";
 import { buildMetrics } from "../src/metrics.mjs";
+import { sourceClass } from "../src/reconcile.mjs";
 import { scan } from "../src/scan.mjs";
 import { makeWorld } from "./helpers/world.mjs";
 
 const schema = JSON.parse(readFileSync(new URL("../schema/v1.json", import.meta.url)));
 const validate = new Ajv({ allErrors: true, strict: false }).compile(schema);
 const tmp = () => mkdtempSync(join(tmpdir(), "flopscan-"));
+// One source only (no second source exists yet), or needs a second run of history.
+const EXPECTED_PENDING_FIRST_RUN = ["compute.settlements:pending", "agents.identities:pending", "faucet.balance:pending", "faucet.transactions:pending", "faucet.transactions_window:pending"];
 
 async function run(knobs = {}, dirs = { out: tmp(), cache: tmp() }) {
   const w = makeWorld(knobs);
@@ -27,6 +30,7 @@ function assertRule(doc) {
     if (m.value !== null) {
       assert.equal(m.status, "match", `${m.id} has a value but status ${m.status}`);
       assert.ok(deciding.length >= 2 || m.method === "rowwise", `${m.id} has a value from ${deciding.length} reading(s)`);
+      assert.ok(new Set(deciding.map((r) => sourceClass(r.source))).size >= 2, `${m.id} has a value from one source class`);
     }
     if (m.status !== "match") assert.equal(m.value, null, `${m.id} is ${m.status} but shows ${m.value}`);
   }
@@ -38,9 +42,9 @@ test("a consistent world: every metric agrees, output validates against the sche
   assertRule(doc);
   const bad = doc.metrics.filter((m) => m.kind !== "table" && m.status !== "match").map((m) => `${m.id}:${m.status}`);
   // The faucet window needs two runs of history, so it is pending on the first run. Nothing else may be.
-  assert.deepEqual(bad, ["faucet.transactions_window:pending"]);
+  assert.deepEqual(bad, EXPECTED_PENDING_FIRST_RUN);
   assert.deepEqual(doc.sources.errors, {});
-  assert.deepEqual(bad, ["faucet.transactions_window:pending"]);
+  assert.deepEqual(bad, EXPECTED_PENDING_FIRST_RUN);
   assert.equal(doc.summary.mismatch, 0);
   assert.equal(byId.get("rewards.periods").value, "10");
   assert.equal(byId.get("rewards.periods_with_miner_payout").value, "5");
@@ -70,7 +74,9 @@ test("explorer down: explorer-backed metrics are pending, chain-only checks stil
   const { doc, byId } = await run({ httpDown: () => true });
   assertRule(doc);
   assert.equal(byId.get("compute.miner_paid").status, "pending");
-  assert.equal(byId.get("agents.identities").status, "match"); // three chain readings
+  // Three chain-state readings agree, but they are one source: no value until a second one exists.
+  assert.equal(byId.get("agents.identities").status, "pending");
+  assert.equal(byId.get("agents.identities").reason, "single_source");
   assert.equal(byId.get("runtime.current").status, "match");
   assert.ok(doc.sources.errors.explorer);
   assert.ok(validate(doc), JSON.stringify(validate.errors?.slice(0, 3)));
@@ -96,14 +102,32 @@ test("last agreed value is carried, labelled with its block, when a later run ca
   assert.equal(m.last_match.block, 1000);
 });
 
-test("faucet window appears on the second run and reconciles", async () => {
+test("faucet window appears on the second run: nonce change equals transactions the faucet sent", async () => {
   const dirs = { out: tmp(), cache: tmp() };
-  await run({ head: 1000, lo: 995 }, dirs);
-  const { byId } = await run({ head: 1600, lo: 1590 }, dirs);
+  const first = await run({ head: 1000, lo: 995 }, dirs);
+  assert.equal(first.byId.get("faucet.transactions_window").status, "pending");
+  const { byId, w } = await run({ head: 1600, lo: 1590 }, dirs);
   const m = byId.get("faucet.transactions_window");
   assert.equal(m.status, "match");
-  assert.equal(m.value, "595"); // explorer txCount moved with the indexed block (lo), inside the chain's range
-  assert.equal(byId.get("faucet.outflow_window").status, "match");
+  assert.equal(m.value, "595"); // blocks 996..1590; refills sent to the faucet are not counted
+  assert.deepEqual([m.window.from_block, m.window.to_block], [995, 1590]);
+  assert.ok(w.calls.http > 0);
+});
+
+test("faucet window: a transaction the explorer lists under another sender is a mismatch", async () => {
+  const dirs = { out: tmp(), cache: tmp() };
+  await run({ head: 1000, lo: 995 }, dirs);
+  const { byId } = await run({ head: 1600, lo: 1590, faucetSender: (b) => (b === 1200 ? "5Someone" : undefined) }, dirs);
+  const m = byId.get("faucet.transactions_window");
+  assert.equal(m.status, "mismatch");
+  assert.equal(m.delta, "1");
+});
+
+test("faucet balance: the explorer's untracked balance (liveBalance false) is unread, not 0", async () => {
+  const { byId } = await run();
+  const m = byId.get("faucet.balance");
+  assert.equal(m.status, "pending");
+  assert.equal(m.readings.find((r) => r.source === "explorer").value, null);
 });
 
 // Fuzz: take a real-shaped bundle, corrupt one leaf at random, rebuild. Must not throw; must keep the rule; must validate.

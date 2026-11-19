@@ -8,6 +8,7 @@ export const SIGNER = "5DZsAQuavUAM7A6XvoTkDQgtQdRCMcALdUd6Bx4FSoFMF8ux";
 const MINERS = ["5Fminer1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "5Fminer2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "5Fminer3ccccccccccccccccccccccccccccccccccccccc"];
 const CONSTS = { initialRewardPerBlock: "1000", halvingIntervalBlocks: "100000", maxHalvings: "5", distributionPeriodBlocks: "100" };
 const POT = 1000n * 100n;
+const AGENTS = [1, 2, 3].map((i) => ({ agent_id: `0x${String(i).repeat(64)}`, owner: `5Owner${i}`, registered_at: 400 + i }));
 
 export function makeWorld(knobs = {}) {
   const head = knobs.head ?? 1000;
@@ -69,9 +70,11 @@ export function makeWorld(knobs = {}) {
       const evs = [];
       if (upgrades.includes(n)) evs.push({ section: "system", method: "CodeUpdated", data: [] });
       for (const r of settle.filter((r) => r.settledBlock === n)) evs.push({ section: "computeChannel", method: "Settled", data: [r.channelId, r.minerPaid, r.burned, r.aggregateGn, true] });
+      for (const a of AGENTS) if (a.registered_at === n && knobs.dropAgentEvent !== n) evs.push({ section: "agentIdentity", method: "AgentRegistered", data: [a.agent_id, a.owner, "name", "did", "Autonomous"] });
       if (n === 900) evs.push({ section: "settlementSp1Pallet", method: "ProofVerified", data: ["0xab"] });
       return evs;
     },
+    agents: async () => (knobs.agentsDown ? null : AGENTS.map((a) => ({ ...a }))),
     disconnect: async () => {},
   };
 
@@ -81,7 +84,7 @@ export function makeWorld(knobs = {}) {
     "/api/stats": () => exStats,
     "/api/rewards/summary": () => ({ totalDistributed: String(BigInt(Object.keys(periods).length) * POT), totalMinerRewards: String(counters.miner), totalValidatorRewards: String(counters.validator), distributionCount: Object.keys(periods).length }),
     "/api/rewards/distributions": () => Object.values(periods).map((p) => ({ id: `reward-${p.block}`, block_number: Number(p.block), total_reward: p.distributed.total_reward, miner_share: p.distributed.miner_share, validator_share: p.distributed.validator_share, miners_paid: Number(p.distributed.miners_paid) })),
-    "/api/inference-spend": () => ({ totalSpentRaw: String(paidUpTo(head)), settledChannels: settle.length }),
+    "/api/inference-spend": () => ({ totalSpentRaw: String(paidUpTo(lo)), settledChannels: settle.filter((r) => r.settledBlock <= lo).length }),
     "/api/agent-wallets": () => ({ data: [], pagination: { total: 11 } }),
     "/api/sessions": () => ({ data: [], pagination: { total: 17 } }),
     "/api/compute-channels": () => ({ data: [], pagination: { total: 77 } }),
@@ -92,7 +95,18 @@ export function makeWorld(knobs = {}) {
     "/api/transactions/sections": () => ({ data: [{ section: "settlementSp1Pallet", count: 1 }] }),
     "/api/transactions": () => [{ hash: H(77), blockHash: H(900), method: "submitProof", success: true, timestamp: T0, events: [{ section: "settlementSp1Pallet", method: "ProofVerified" }] }],
     "/api/settlement-prices": (q) => { const off = Number(q.get("offset") ?? 0); const lim = Number(q.get("limit") ?? 100); return { data: settle.slice(off, off + lim), pagination: { total: settle.length, limit: lim, offset: off, hasMore: off + lim < settle.length } }; },
-    [`/api/accounts/${SIGNER}`]: () => ({ address: SIGNER, balance: String(10n ** 20n - BigInt(lo)), txCount: lo + 1 }),
+    [`/api/accounts/${SIGNER}`]: () => ({ address: SIGNER, balance: "0", liveBalance: false, txCount: lo + 1 + 3 }),
+    // The fake faucet signs one transaction per block (nonce at block n is n); every 50th block it
+    // also receives a refill, which the list shows with another sender. Newest first, bare array.
+    [`/api/accounts/${SIGNER}/transactions`]: (q) => {
+      const rows = [];
+      for (let b = lo; b >= 1; b--) {
+        rows.push({ hash: H(1_000_000 + b), sender: knobs.faucetSender?.(b) ?? SIGNER, timestamp: T0 + b * 1000, success: true });
+        if (b % 50 === 0) rows.push({ hash: H(2_000_000 + b), sender: MINERS[1], timestamp: T0 + b * 1000, success: true });
+      }
+      const off = Number(q.get("offset") ?? 0); const lim = Number(q.get("limit") ?? 100);
+      return { __raw: rows.slice(off, off + lim) };
+    },
     "/limits": () => ({ faucet: { signer: SIGNER, balanceFlop: "100" }, asOf: "2026-11-18T12:00:00Z" }),
     "/token": () => ({ token: "anonymous-test-token" }),
   };
@@ -106,7 +120,8 @@ export function makeWorld(knobs = {}) {
     if (!route) throw new Error(`GET ${url}: HTTP 404`);
     const override = knobs.explorer?.[u.pathname];
     let body = override !== undefined ? (typeof override === "function" ? override(u.searchParams) : override) : route(u.searchParams);
-    if (Array.isArray(body)) body = paginate(body, u.searchParams);
+    if (body && Array.isArray(body.__raw)) body = body.__raw;
+    else if (Array.isArray(body)) body = paginate(body, u.searchParams);
     return structuredClone(body);
   };
   const fetchImpl = async () => ({ ok: true, status: 200, headers: { get: (k) => (k === "docker-content-digest" ? knobs.registryDigest ?? `sha256:${"a".repeat(64)}` : null) } });

@@ -10,6 +10,16 @@
 
 export const STATUS = Object.freeze({ MATCH: "match", MISMATCH: "mismatch", PENDING: "pending" });
 
+// Readings that come from the same place are one source, however many ways we read it. A storage
+// counter and the size of the map it counts are written by the same pallet code; two endpoints of
+// one explorer share one indexer. Agreement needs readings from two different classes.
+const SOURCE_CLASS = Object.freeze({ "rpc.storage": "chain state", "rpc.keys": "chain state" });
+export const sourceClass = (source) => SOURCE_CLASS[source] ?? source;
+/** Why a metric with agreeing readings still has no value. */
+export const SINGLE_SOURCE = "single_source";
+
+const classes = (rs) => new Set(rs.map((r) => sourceClass(r.source))).size;
+
 const isInt = (v) => typeof v === "string" && /^-?\d+$/.test(v);
 
 /** A reading from one source. `value` null means the source was not readable this run. */
@@ -31,6 +41,7 @@ export function reconcileExact(readings) {
   if (deciding.length < 2) return { status: STATUS.PENDING, value: null, method: "exact", readings };
   const first = deciding[0].value;
   const agree = deciding.every((r) => r.value === first);
+  if (agree && classes(deciding) < 2) return { status: STATUS.PENDING, value: null, method: "exact", reason: SINGLE_SOURCE, readings };
   if (agree) return { status: STATUS.MATCH, value: first, method: "exact", readings };
   const ints = deciding.every((r) => isInt(r.value));
   let delta = null;
@@ -59,7 +70,9 @@ export function reconcileBracketed(lo, hi, observed) {
   const [a, b, x] = [BigInt(lo.value), BigInt(hi.value), BigInt(observed.value)];
   const low = a < b ? a : b;
   const high = a < b ? b : a;
-  if (low <= x && x <= high) return { status: STATUS.MATCH, value: observed.value, method: "bracketed", readings };
+  const inside = low <= x && x <= high;
+  if (inside && classes([lo, hi, observed]) < 2) return { status: STATUS.PENDING, value: null, method: "bracketed", reason: SINGLE_SOURCE, readings };
+  if (inside) return { status: STATUS.MATCH, value: observed.value, method: "bracketed", readings };
   const delta = String(x < low ? low - x : x - high);
   return { status: STATUS.MISMATCH, value: null, method: "bracketed", delta, readings };
 }
