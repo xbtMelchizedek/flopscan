@@ -5,3 +5,5 @@ node_modules/
 *.pem
 *.key
 .cache/
+data/
+_site/
