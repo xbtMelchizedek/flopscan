@@ -4,3 +4,6 @@ node_modules/
 .env*
 *.pem
 *.key
+.cache/
+data/
+_site/

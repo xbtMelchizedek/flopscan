@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { documentedLeg, periodBoundaries, rewardAt, scheduledPeriodTotal } from "../src/schedule.mjs";
+import { MAX_PERIODS, documentedLeg, periodBoundaries, rewardAt, scheduledPeriodTotal } from "../src/schedule.mjs";
 
 const E18 = 10n ** 18n;
 // Runtime constants read from FLOP devnet (spec 1,014,027) on 18 Nov 2026.
@@ -39,4 +39,17 @@ test("inputs that are not boundaries are refused, not rounded", () => {
   assert.throws(() => rewardAt(0, DEVNET), RangeError);
   assert.deepEqual(periodBoundaries(12, 4), [4n, 8n, 12n]);
   assert.deepEqual(periodBoundaries(0, 4), []);
+});
+
+test("malformed constants are refused quickly instead of looping or exhausting memory", () => {
+  const ok = { initialRewardPerBlock: "96", halvingIntervalBlocks: "1000", maxHalvings: "5", distributionPeriodBlocks: "100" };
+  assert.throws(() => periodBoundaries("100", "-1"), RangeError);
+  assert.throws(() => periodBoundaries("100", "0"), RangeError);
+  assert.throws(() => periodBoundaries("1.5", "1"), RangeError);
+  assert.throws(() => periodBoundaries("99999999999999999999999999999999999999", "1"), /refusing/);
+  assert.equal(periodBoundaries(String(MAX_PERIODS), "1").length, Number(MAX_PERIODS));
+  assert.throws(() => scheduledPeriodTotal("100", { ...ok, halvingIntervalBlocks: "-5" }), RangeError);
+  assert.throws(() => scheduledPeriodTotal("100", { ...ok, halvingIntervalBlocks: "0" }), RangeError);
+  assert.throws(() => rewardAt(5, { ...ok, maxHalvings: "-1" }), RangeError);
+  assert.equal(rewardAt(1, ok), 96n);
 });

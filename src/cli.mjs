@@ -4,6 +4,7 @@
 //   flopscan rewards   [--at N] [--last K]      reconcile block rewards: events vs counters vs schedule
 //   flopscan issuance  --from A --to B          explain totalIssuance(B) - totalIssuance(A) from events
 //   flopscan verifiers [--at N]                 vks / tickets per proof-verification pallet
+//   flopscan scan      [--out DIR] [--cache DIR]  every v1 metric, incremental and resumable; writes DIR/latest.json
 //
 // Common flags: --network devnet (default), --rpc URL (must still match the pinned genesis).
 
@@ -12,6 +13,7 @@ import { connect, pin, readIssuanceWindow, readPeriod, readRewardsState, readVer
 import { explainIssuance, isIssuanceEvent } from "./issuance.mjs";
 import { reconcileRewards } from "./rewards.mjs";
 import { periodBoundaries } from "./schedule.mjs";
+import { scan } from "./scan.mjs";
 
 const MAX_ISSUANCE_WINDOW = 600; // blocks; one RPC round trip per block, keep it honest and bounded
 
@@ -52,11 +54,27 @@ export async function main(argv) {
       from: { type: "string" },
       to: { type: "string" },
       last: { type: "string" },
+      out: { type: "string", default: "data/v1" },
+      cache: { type: "string", default: ".cache/flopscan" },
+      quiet: { type: "boolean", default: false },
+      "dump-bundle": { type: "string" },
     },
   });
+  if (positionals[0] === "scan") {
+    const log = values.quiet ? () => {} : (m) => process.stderr.write(`[${new Date().toISOString()}] ${m}\n`);
+    try {
+      const doc = await scan({ outDir: values.out, cacheDir: values.cache, network: values.network, rpcUrl: values.rpc, log, bundlePath: values["dump-bundle"] ?? null });
+      process.stdout.write(JSON.stringify({ verb: "scan", as_of: doc.as_of, summary: doc.summary, errors: doc.sources.errors }, null, 2) + "\n");
+      // Exit 1 on any disagreement so CI can alert; the files are written either way.
+      return doc.summary.mismatch > 0 ? 1 : 0;
+    } catch (err) {
+      process.stdout.write(JSON.stringify({ ok: false, verb: "scan", error: String(err.message ?? err) }) + "\n");
+      return 2;
+    }
+  }
   const verb = VERBS[positionals[0]];
   if (!verb) {
-    process.stdout.write(JSON.stringify({ ok: false, error: `verbs: ${Object.keys(VERBS).join(", ")}` }) + "\n");
+    process.stdout.write(JSON.stringify({ ok: false, error: `verbs: ${[...Object.keys(VERBS), "scan"].join(", ")}` }) + "\n");
     return 2;
   }
   const flags = { ...values, at: values.at === undefined ? undefined : Number(values.at) };

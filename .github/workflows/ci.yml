@@ -16,6 +16,19 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm ci
+      - run: for f in src/*.mjs src/sources/*.mjs scripts/*.mjs; do node --check "$f"; done
       - run: npm test
-      - run: node --check src/cli.mjs
+        env:
+          FUZZ_RUNS: "2000"
       - run: python3 scripts/secret_scan.py
+  mutation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: node scripts/mutate.mjs

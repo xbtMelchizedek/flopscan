@@ -1,0 +1,67 @@
+name: scan and deploy
+# Every 30 minutes: resume the incremental scan from the cached cursor, build the static
+# dashboard, and deploy it to GitHub Pages. No data is committed to the repo.
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: scan-and-deploy
+  cancel-in-progress: false # never kill a scan mid-write; the next run waits
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: restore scan cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cache/flopscan
+            data/v1
+          key: flopscan-scan-${{ github.run_id }}
+          restore-keys: flopscan-scan-
+      - name: scan
+        # A cold first scan reads ~50 historical blocks and their runtimes' metadata and can take
+        # longer than this. The cache is saved anyway (next step), and the next run resumes.
+        timeout-minutes: 40
+        # Exit 1 means some sources disagree: that is data, publish it. Exit 2 is a fatal error.
+        run: |
+          set +e
+          node src/cli.mjs scan --out data/v1 --cache .cache/flopscan
+          code=$?
+          echo "scan exit $code"
+          if [ "$code" -gt 1 ]; then exit "$code"; fi
+      - name: save scan cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .cache/flopscan
+            data/v1
+          key: flopscan-scan-${{ github.run_id }}
+      - run: node scripts/build-site.mjs --data data/v1 --out _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: scan
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

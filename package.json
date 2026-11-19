@@ -1,17 +1,31 @@
 {
   "name": "flopscan",
   "version": "0.1.0",
-  "description": "Read-only FLOP chain forensics: reconcile block rewards, issuance and verifier use from two independent sources.",
+  "description": "Read-only FLOP devnet metrics, each reconciled from two independent sources (chain storage, chain events, explorer API).",
   "license": "MIT",
   "type": "module",
-  "bin": { "flopscan": "src/cli.mjs" },
-  "engines": { "node": ">=22" },
+  "bin": {
+    "flopscan": "src/cli.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "secret-scan": "python3 scripts/secret_scan.py"
+    "secret-scan": "python3 scripts/secret_scan.py",
+    "scan": "node src/cli.mjs scan",
+    "build-site": "node scripts/build-site.mjs",
+    "mutate": "node scripts/mutate.mjs"
   },
   "dependencies": {
     "@polkadot/api": "17.0.2"
   },
-  "repository": { "type": "git", "url": "git+https://github.com/xbtMelchizedek/flopscan.git" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xbtMelchizedek/flopscan.git"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "fast-check": "4.10.3"
+  }
 }
