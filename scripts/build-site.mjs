@@ -131,7 +131,7 @@ ${tables.map(table).join("\n")}</section>`;
 <li><span class="badge neutral"><span class="badge-dot" aria-hidden="true"></span>${s.pending} without an agreed value</span></li>
 </ul>
 <div class="alert" role="note"><strong>Devnet data, not financial information. Unaudited.</strong> Devnet FLOP has no value. This page is read-only: it never signs or sends anything. Unaffiliated with Flop Labs.</div>
-${errors.length ? `<div class="alert danger" role="status"><strong>Some sources could not be read this run.</strong> ${errors.map(([k, v]) => `${esc(k)}: ${esc(v)}`).join("; ")}</div>` : ""}
+${errors.length ? `<div class="alert danger" role="status"><strong>Some sources could not be read this run.</strong> ${errors.map(([k, v]) => `${esc(k)}: ${esc(String(v).split("\n")[0].slice(0, 160))}`).join("; ")} Full messages are in latest.json.</div>` : ""}
 <nav class="toc" aria-label="Sections">${toc}</nav>
 </header>
 <main id="main">
