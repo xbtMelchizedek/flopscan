@@ -34,11 +34,15 @@ export function isRetryableRpcError(e) {
  * Route every JSON-RPC request through the limiter and retry the retryable ones, so @polkadot/api's
  * own internal reads (metadata, runtime versions) are polite too.
  */
-export function politeProvider(provider, { limiter, attempts = 6, onRetry } = {}) {
+export function politeProvider(provider, { limiter, attempts = 8, base = 1000, cap = 60_000, wait, onRetry } = {}) {
   const send = provider.send.bind(provider);
   provider.send = (method, params, ...rest) => {
     if (rest[1]) return send(method, params, ...rest); // subscriptions go straight through
-    return withRetry(() => limiter.schedule(() => send(method, params, ...rest)), { attempts, isRetryable: isRetryableRpcError, onRetry });
+    // Up to ~2 min of backoff per request; a retry also pauses every queued request behind it.
+    return withRetry(() => limiter.schedule(() => send(method, params, ...rest)), {
+      attempts, base, cap, wait, isRetryable: isRetryableRpcError,
+      onRetry: (e, k, ms) => { limiter.pause(ms); onRetry?.(e, k, ms); },
+    });
   };
   provider.rpcStats = () => limiter.stats;
   return provider;

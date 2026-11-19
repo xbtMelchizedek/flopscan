@@ -11,7 +11,7 @@ export function createLimiter({ rps = 4, concurrency = 4, now = () => Date.now()
   let next = 0;
   let active = 0;
   const queue = [];
-  let stats = { started: 0, maxActive: 0 };
+  let stats = { started: 0, maxActive: 0, pauses: 0 };
   const pump = async () => {
     while (active < concurrency && queue.length) {
       const job = queue.shift();
@@ -29,6 +29,8 @@ export function createLimiter({ rps = 4, concurrency = 4, now = () => Date.now()
   };
   return {
     schedule(fn) { return new Promise((resolve, reject) => { queue.push({ fn, resolve, reject }); pump(); }); },
+    /** Hold every request not yet started for `ms`: one 503 slows the whole client, not one call. */
+    pause(ms) { next = Math.max(next, now() + Math.max(0, ms)); stats.pauses++; },
     get stats() { return { ...stats, queued: queue.length, active }; },
   };
 }
@@ -92,6 +94,6 @@ export function createJsonGetter({ limiter, fetchImpl = globalThis.fetch, attemp
         try { return JSON.parse(text); } catch { throw new RetryableError(`GET ${url}: body is not JSON`); }
       };
       return limiter ? limiter.schedule(run) : run();
-    }, { attempts, wait, rand, base, cap, onRetry });
+    }, { attempts, wait, rand, base, cap, onRetry: (e, k, ms) => { limiter?.pause(ms); onRetry?.(e, k, ms); } });
   };
 }

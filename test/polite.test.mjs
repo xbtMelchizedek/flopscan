@@ -86,3 +86,28 @@ test("getJson: 503 then 200 succeeds; identifies itself; 404 is final; HTML is r
   const f4 = fakeFetch([new TypeError("fetch failed"), { status: 200, body: "[]" }]);
   assert.deepEqual(await createJsonGetter({ fetchImpl: f4, wait: noWait })("https://x"), []);
 });
+
+test("a retry pauses the whole limiter: queued requests start no earlier than the backoff", async () => {
+  let t = 0;
+  const lim = createLimiter({ rps: 100, concurrency: 4, now: () => t, wait: async (ms) => { t += ms; } });
+  lim.pause(5000);
+  const starts = await Promise.all([1, 2, 3].map(() => lim.schedule(async () => t)));
+  for (const s of starts) assert.ok(s >= 5000, `started at ${s}`);
+  assert.equal(lim.stats.pauses, 1);
+});
+
+test("an RPC 503 through politeProvider is retried and pauses the shared limiter", async () => {
+  const { politeProvider } = await import("../src/chain.mjs");
+  let t = 0;
+  const lim = createLimiter({ rps: 100, concurrency: 1, now: () => t, wait: async (ms) => { t += ms; } });
+  let calls = 0;
+  const provider = { send: async () => { if (++calls < 3) throw new Error("[503]: Service Unavailable"); return "ok"; } };
+  politeProvider(provider, { limiter: lim, wait: async (ms) => { t += ms; } });
+  assert.equal(await provider.send("chain_getHeader", []), "ok");
+  assert.equal(calls, 3);
+  assert.equal(lim.stats.pauses, 2);
+  // A wrong-chain or bad-params error is final.
+  const p2 = { send: async () => { throw new Error("-32602: Invalid params"); } };
+  politeProvider(p2, { limiter: lim, wait: async () => {} });
+  await assert.rejects(p2.send("x", []), /Invalid params/);
+});
