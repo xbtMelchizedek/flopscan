@@ -9,7 +9,7 @@ import { makeWorld } from "./helpers/world.mjs";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "flopscan-adv-"));
 const H = (n) => `0x${n.toString(16).padStart(64, "0")}`;
-const run = (w, dirs = { out: tmp(), cache: tmp() }) => scan({ outDir: dirs.out, cacheDir: dirs.cache, getJson: w.getJson, connectChain: async () => w.readers, fetchImpl: w.fetchImpl, now: w.now });
+const run = (w, dirs = { out: tmp(), cache: tmp() }) => scan({ outDir: dirs.out, cacheDir: dirs.cache, getJson: w.getJson, connectChain: async () => w.readers, runtimeProbeBudget: 1e9, fetchImpl: w.fetchImpl, now: w.now });
 const byId = (doc) => new Map(doc.metrics.map((m) => [m.id, m]));
 
 test("a proof the explorer calls verified but whose block has no ProofVerified event is not counted", async () => {

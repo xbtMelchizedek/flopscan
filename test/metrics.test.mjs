@@ -18,7 +18,7 @@ const EXPECTED_PENDING_FIRST_RUN = ["compute.settlements:pending", "agents.ident
 
 async function run(knobs = {}, dirs = { out: tmp(), cache: tmp() }) {
   const w = makeWorld(knobs);
-  const doc = await scan({ outDir: dirs.out, cacheDir: dirs.cache, getJson: w.getJson, connectChain: async () => w.readers, fetchImpl: w.fetchImpl, now: w.now, bundlePath: join(dirs.out, "bundle.json") });
+  const doc = await scan({ outDir: dirs.out, cacheDir: dirs.cache, getJson: w.getJson, connectChain: async () => w.readers, runtimeProbeBudget: 1e9, fetchImpl: w.fetchImpl, now: w.now, bundlePath: join(dirs.out, "bundle.json") });
   return { doc, w, dirs, byId: new Map(doc.metrics.map((m) => [m.id, m])) };
 }
 

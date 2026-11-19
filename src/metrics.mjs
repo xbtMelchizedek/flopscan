@@ -400,11 +400,11 @@ function versionMetrics(bundle) {
   const out = [];
   const rt = bundle.runtime; // { spans: [{spec_version, from_block, to_block, event: {block, found}}], current }
   const lastUpgrade = bundle.chain?.hi?.counters?.runtime ?? null;
+  const hiSpec = typeof bundle.runtimeHi === "string" ? bundle.runtimeHi : null;
+  out.push(metric({ group: "versions", unit: "text", id: "runtime.current", title: "Runtime version", note: "state_getRuntimeVersion at the window end vs system.lastRuntimeUpgrade." },
+    reconcileExact([reading("rpc.runtime", hiSpec, { label: "state_getRuntimeVersion", ...at(bundle.window?.hi, true) }),
+      reading("rpc.storage", lastUpgrade ? `${lastUpgrade.spec_name} ${lastUpgrade.spec_version}` : null, { label: "system.lastRuntimeUpgrade", ...at(bundle.window?.hi, true) })])));
   if (rt?.spans?.length) {
-    const cur = rt.spans[rt.spans.length - 1];
-    out.push(metric({ group: "versions", unit: "text", id: "runtime.current", title: "Runtime version", note: "state_getRuntimeVersion at the window end vs system.lastRuntimeUpgrade." },
-      reconcileExact([reading("rpc.runtime", `${cur.spec_name} ${cur.spec_version}`, { label: "state_getRuntimeVersion" }),
-        reading("rpc.storage", lastUpgrade ? `${lastUpgrade.spec_name} ${lastUpgrade.spec_version}` : null, { label: "system.lastRuntimeUpgrade" })])));
     const upgrades = rt.spans.slice(1);
     const confirmed = upgrades.filter((s) => s.code_updated_block != null).length;
     out.push(metric({ group: "versions", unit: "count", id: "runtime.upgrades", title: "Runtime upgrades found", note: "Boundaries found by bisecting state_getRuntimeVersion over block numbers; each must have a system.CodeUpdated event in the boundary block or the one before. Bisection cannot see an upgrade that was reverted to the same version between two probes." },
@@ -412,7 +412,9 @@ function versionMetrics(bundle) {
     out.push({ group: "versions", id: "runtime.table", kind: "table", title: "Runtime history", status: confirmed === upgrades.length ? STATUS.MATCH : STATUS.MISMATCH,
       columns: ["spec_version", "from_block", "to_block", "code_updated_block"], rows: rt.spans.map((s) => ({ ...s, link: explorerLink.block(s.from_block) })) });
   } else {
-    out.push(metric({ group: "versions", unit: "text", id: "runtime.current", title: "Runtime version" }, reconcileExact([reading("rpc.runtime", null), reading("rpc.storage", lastUpgrade ? `${lastUpgrade.spec_name} ${lastUpgrade.spec_version}` : null)])));
+    const building = rt?.building ? `History is still being built: ${n(rt.probes) ?? "some"} versions probed so far, up to block ${n(rt.target) ?? "?"}. Each run adds a few probes to stay polite to the public RPC.` : "Runtime history could not be read this run.";
+    out.push(metric({ group: "versions", unit: "count", id: "runtime.upgrades", title: "Runtime upgrades found", note: building },
+      reconcileExact([reading("rpc.runtime", null), reading("rpc.events", null)])));
   }
   const rel = bundle.releases; // [{component, version, explorer_digest, registry_digest, image}]
   if (Array.isArray(rel)) {

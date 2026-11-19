@@ -24,6 +24,9 @@ export const FAUCET = "https://faucet.flop.network";
 const GHCR = "https://ghcr.io";
 const SETTLEMENT_SAMPLE = 8;
 const AGENT_SAMPLE = 8;
+// Historical state_getRuntimeVersion costs the public node ~30 s, so each run spends at most this
+// many new probes. Probes are cached; the history completes over a few runs and is pending until then.
+export const RUNTIME_PROBE_BUDGET = 12;
 const HISTORY_KEEP = 7 * 48; // a week of half-hourly runs
 const DISCLAIMER = "Devnet data, not financial information. Unaudited. Devnet FLOP has no value.";
 
@@ -54,7 +57,7 @@ export function apiReaders(api) {
   };
 }
 
-export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explorerBase, getJson, connectChain, now = () => Date.now(), log = () => {}, onUnit = () => {}, fetchImpl = globalThis.fetch, bundlePath = null } = {}) {
+export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explorerBase, getJson, connectChain, now = () => Date.now(), log = () => {}, onUnit = () => {}, fetchImpl = globalThis.fetch, bundlePath = null, runtimeProbeBudget = RUNTIME_PROBE_BUDGET } = {}) {
   const store = createStore(cacheDir);
   const errors = {};
   const note = (src, e) => { errors[src] = String(e?.message ?? e).slice(0, 300); log(`${src}: ${errors[src]}`); };
@@ -172,25 +175,9 @@ export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explo
 
       // Runtime history: bisection with every probe cached.
       log("phase runtime");
+      try { const v = await api.specAt(hi.number); bundle.runtimeHi = `${v.spec_name} ${v.spec_version}`; } catch (e) { note("rpc.runtime_hi", e); }
       try {
-        const probes = store.get("runtime-probes", {});
-        const probe = async (nBlock) => {
-          if (probes[nBlock]) return probes[nBlock];
-          const s = await api.specAt(nBlock);
-          probes[nBlock] = `${s.spec_name} ${s.spec_version}`;
-          store.put("runtime-probes", probes); unit(`probe ${nBlock}`);
-          return probes[nBlock];
-        };
-        const codeUpdatedNear = async (b) => {
-          for (const x of [b, b - 1]) {
-            const evs = await api.blockEvents(x);
-            if (evs.some((e) => e.section === "system" && e.method === "CodeUpdated")) return x;
-          }
-          return null;
-        };
-        const rt = await extendRuntimeHistory(store.get("runtime", null), hi.number, { probe, codeUpdatedNear });
-        store.put("runtime", rt); unit("runtime");
-        bundle.runtime = rt;
+        bundle.runtime = await buildRuntimeHistory(store, hi.number, api, { budget: runtimeProbeBudget, unit });
       } catch (e) { note("rpc.runtime", e); }
 
       // Agent identities: a sample from storage, each checked for its AgentRegistered event. Cached:
@@ -298,6 +285,52 @@ export async function scan({ outDir, cacheDir, network = "devnet", rpcUrl, explo
   writeJsonAtomic(join(outDir, "latest.json"), doc);
   writeJsonAtomic(join(outDir, "history.json"), { $schema: SCHEMA_ID, schema_version: SCHEMA_VERSION, network, runs: store.get("history", []) });
   return doc;
+}
+
+class ProbeBudgetSpent extends Error {}
+
+/**
+ * Runtime history, built across runs. Until the first full history exists, bisection runs over a
+ * fixed range [1, target] saved in the cache, so the midpoints (and the cached probes) stay the
+ * same from run to run. After that, each run extends from the last checked block to `head`.
+ * Returns the history, or `{ building: true, probes, target }` when this run's budget ran out.
+ */
+export async function buildRuntimeHistory(store, head, api, { budget = RUNTIME_PROBE_BUDGET, unit = () => {} } = {}) {
+  const probes = store.get("runtime-probes", {});
+  const codeUpdated = store.get("runtime-code-updated", {});
+  let spent = 0;
+  const spend = () => { if (spent >= budget) throw new ProbeBudgetSpent(); spent++; };
+  const probe = async (b) => {
+    if (probes[b]) return probes[b];
+    spend();
+    const v = await api.specAt(b);
+    probes[b] = `${v.spec_name} ${v.spec_version}`;
+    store.put("runtime-probes", probes); unit(`probe ${b}`);
+    return probes[b];
+  };
+  const codeUpdatedNear = async (b) => {
+    if (codeUpdated[b] !== undefined) return codeUpdated[b];
+    let found = null;
+    for (const x of [b, b - 1]) {
+      spend();
+      const evs = await api.blockEvents(x);
+      if (evs.some((e) => e.section === "system" && e.method === "CodeUpdated")) { found = x; break; }
+    }
+    codeUpdated[b] = found;
+    store.put("runtime-code-updated", codeUpdated); unit(`code-updated ${b}`);
+    return found;
+  };
+  const prev = store.get("runtime", null);
+  const target = prev ? head : store.get("runtime-target", null) ?? head;
+  if (!prev) store.put("runtime-target", target);
+  try {
+    const rt = await extendRuntimeHistory(prev, target, { probe, codeUpdatedNear });
+    store.put("runtime", rt); unit("runtime");
+    return rt;
+  } catch (e) {
+    if (e instanceof ProbeBudgetSpent) return { building: true, probes: Object.keys(probes).length, target };
+    throw e;
+  }
 }
 
 /** Does a chain event record the registration of this storage row? Exact id and owner. */

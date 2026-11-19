@@ -10,7 +10,7 @@ import { makeWorld } from "./helpers/world.mjs";
 const tmp = () => mkdtempSync(join(tmpdir(), "flopscan-"));
 async function doc(knobs) {
   const w = makeWorld(knobs); const out = tmp();
-  const d = await scan({ outDir: out, cacheDir: tmp(), getJson: w.getJson, connectChain: async () => w.readers, fetchImpl: w.fetchImpl, now: w.now });
+  const d = await scan({ outDir: out, cacheDir: tmp(), getJson: w.getJson, connectChain: async () => w.readers, runtimeProbeBudget: 1e9, fetchImpl: w.fetchImpl, now: w.now });
   return { d, out };
 }
 
