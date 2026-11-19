@@ -54,10 +54,14 @@ export const MUTATIONS = [
   ["src/sources/rpc.mjs", "    return call;\n  };", "    return Promise.resolve(call).catch(() => null);\n  };", "rpc: failed reads become missing items"],
   ["src/metrics.mjs", "reading(\"rpc.storage\", chainMiners ? String(sumBig(Object.values(chainMiners).map((m) => m?.total_rewards_earned))) : null, { label: \"minerStaking.totalRewardsEarned, summed\", context: true })", "reading(\"rpc.storage\", chainMiners ? String(sumBig(Object.values(chainMiners).map((m) => m?.total_rewards_earned))) : null, { label: \"minerStaking.totalRewardsEarned, summed\" })", "miners: a non-reward counter decides"],
   ["src/schedule.mjs", "if (last / len > MAX_PERIODS) throw", "if (false) throw", "schedule: unbounded period expansion"],
-  ["src/format.mjs", "if (whole === \"0\" && !frac && /[1-9]/.test(digits)) return", "if (false) return", "format: tiny amounts shown as 0"],,
+  ["src/format.mjs", "if (whole === \"0\" && !frac && /[1-9]/.test(digits)) return", "if (false) return", "format: tiny amounts shown as 0"],
   ["src/scan.mjs", "const spend = () => { if (spent >= budget) throw new ProbeBudgetSpent(); spent++; };", "const spend = () => { spent++; };", "runtime: probe budget ignored"],
   ["src/scan.mjs", "const target = prev ? head : store.get(\"runtime-target\", null) ?? head;", "const target = head;", "runtime: bisection range moves every run"]
 ];
+
+for (const [i, m] of MUTATIONS.entries()) {
+  if (!Array.isArray(m) || m.length !== 4 || !m.every((x) => typeof x === "string")) throw new TypeError(`MUTATIONS[${i}] is not [file, from, to, why]`);
+}
 
 // A journal of the file under mutation, written before the mutant and removed after the restore.
 // If the run is killed (SIGKILL, OOM, a closed terminal) the next run restores from it first, so a
