@@ -13,7 +13,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +31,9 @@ jobs:
           key: flopscan-scan-${{ github.run_id }}
           restore-keys: flopscan-scan-
       - name: scan
+        # A cold first scan reads ~50 historical blocks and their runtimes' metadata and can take
+        # longer than this. The cache is saved anyway (next step), and the next run resumes.
+        timeout-minutes: 40
         # Exit 1 means some sources disagree: that is data, publish it. Exit 2 is a fatal error.
         run: |
           set +e
