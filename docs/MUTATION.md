@@ -3,7 +3,7 @@
 `node scripts/mutate.mjs` breaks the code on purpose, one rule at a time, and requires the test suite to fail.
 A mutant that survives is a rule no test protects. CI runs it on every pull request.
 
-Run on 19 Nov 2026 (UTC) on branch v1-live: **41 of 41 mutants killed, 0 survived, 0 stale.**
+Run on 19 Nov 2026 (UTC) on branch v1-live, one clean run: **43 of 43 mutants killed, 0 survived, 0 stale.**
 
 The runner journals each file before mutating it and restores it on SIGINT, SIGTERM and SIGHUP, and at the start of
 the next run. A first run of the previous worker's runner had been killed mid-mutation and left one mutant
@@ -53,6 +53,8 @@ is already in the tree.
 | 39 | `src/metrics.mjs` | miners: a non-reward counter decides | killed |
 | 40 | `src/schedule.mjs` | schedule: unbounded period expansion | killed |
 | 41 | `src/format.mjs` | format: tiny amounts shown as 0 | killed |
+| 42 | `src/scan.mjs` | runtime: probe budget ignored | killed |
+| 43 | `src/scan.mjs` | runtime: bisection range moves every run | killed |
 
 ## History of this list
 
@@ -69,5 +71,10 @@ is already in the tree.
     `minerStaking.totalRewardsEarned` stays 0.
   - "rpc: failed reads become missing items" was mis-aimed (it changed a synchronous catch that a 503 never reaches).
     It now turns rejected reads into null, which is the real bug, and `test/rpc.test.mjs` kills it.
+
+- Two more were added for the runtime probe budget (rows 42 and 43). A stray comma left a hole
+  in the list; `Array.filter` skipped it, so the stale check passed, but the run crashed on it after 41 mutants
+  (the journal restored the file, the tree stayed clean). The runner now validates every entry at load. The final
+  clean run killed all 43.
 
 Reproduce: `npm run mutate` (about 15 minutes; each mutant runs the whole suite with 200 fuzz runs).
