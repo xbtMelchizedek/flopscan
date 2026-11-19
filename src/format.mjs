@@ -18,6 +18,8 @@ export function formatFlop(planck, places = 2) {
   const digits = (neg ? s.slice(1) : s).padStart(DECIMALS + 1, "0");
   const whole = digits.slice(0, -DECIMALS).replace(/^0+(?=\d)/, "");
   const frac = digits.slice(-DECIMALS).slice(0, places).replace(/0+$/, "");
+  // A non-zero amount below the shown precision is never printed as 0.
+  if (whole === "0" && !frac && /[1-9]/.test(digits)) return `${neg ? "-" : ""}< 0.${"0".repeat(Math.max(0, places - 1))}1`;
   return `${neg ? "-" : ""}${groupDigits(whole)}${frac ? `.${frac}` : ""}`;
 }
 
