@@ -69,3 +69,13 @@ test("build writes the page, the data, the schema, Arc's license and .nojekyll",
   for (const f of ["index.html", "data/v1/latest.json", "data/v1/history.json", "schema/v1.json", "arc/LICENSE", "arc/foundation.css", "theme-auto.css", ".nojekyll"]) assert.ok(existsSync(join(site, f)), f);
   assert.match(readFileSync(join(site, "arc/LICENSE"), "utf8"), /Elia Kuratli/);
 });
+
+test("page: a single-source metric says so and shows no number", async () => {
+  const { d } = await doc();
+  const html = renderPage(d);
+  const i = html.indexOf('id="agents.identities"');
+  const card = html.slice(i, html.indexOf("</article>", i));
+  assert.match(card, /One source only/);
+  assert.doesNotMatch(card, /<data value=/);
+  assert.doesNotMatch(card, /Sources agree/);
+});
