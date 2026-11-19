@@ -15,9 +15,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 export const MUTATIONS = [
   ["src/reconcile.mjs", "const agree = deciding.every((r) => r.value === first);", "const agree = deciding.some((r) => r.value === first);", "exact: one agreeing pair is enough"],
-  ["src/reconcile.mjs", "if (deciding.length < 2) return { status: STATUS.PENDING", "if (deciding.length < 1) return { status: STATUS.PENDING", "exact: a single source gets a value"],
   ["src/reconcile.mjs", "const deciding = readings.filter((r) => !r.context && r.value !== null);", "const deciding = readings.filter((r) => r.value !== null);", "exact: context readings decide"],
-  ["src/reconcile.mjs", "if (low <= x && x <= high) return", "if (low <= x) return", "bracketed: no upper bound"],
+  ["src/reconcile.mjs", "const inside = low <= x && x <= high;", "const inside = low <= x;", "bracketed: no upper bound"],
   ["src/reconcile.mjs", "if (ja !== null && ja === jb) agreed++;", "if (ja !== null) agreed++;", "rows: any present row counts as agreeing"],
   ["src/reconcile.mjs", "if (statuses.includes(STATUS.MISMATCH)) return STATUS.MISMATCH;", "", "worst: a mismatch can hide"],
   ["src/settlements.mjs", "next.rows[rowId(r)] = compact(r);", "next.rows[`${rowId(r)}#${Object.keys(next.rows).length}`] = compact(r);", "settlements: no dedupe"],
@@ -44,6 +43,18 @@ export const MUTATIONS = [
   ["scripts/build-site.mjs", "<strong>Devnet data, not financial information. Unaudited.</strong>", "<strong>Live data.</strong>", "site: disclaimer removed"],
   ["src/format.mjs", "export const esc = (s) => String(s ?? \"\").replace(/[&<>\"']/g, (c) => ESC[c]);", "export const esc = (s) => String(s ?? \"\");", "site: no HTML escaping"],
   ["src/format.mjs", "const frac = digits.slice(-DECIMALS).slice(0, places).replace(/0+$/, \"\");", "const frac = digits.slice(-DECIMALS).slice(0, places + 1).replace(/0+$/, \"\");", "format: shows a digit it should have dropped"],
+  ["src/reconcile.mjs", "if (agree && classes(deciding) < 2) return", "if (false) return", "independence: one source class can match"],
+  ["src/reconcile.mjs", "if (inside && classes([lo, hi, observed]) < 2) return", "if (false) return", "independence: one indexer brackets itself"],
+  ["src/polite.mjs", "pause(ms) { next = Math.max(next, now() + Math.max(0, ms)); stats.pauses++; },", "pause(ms) { stats.pauses++; },", "limiter: a 503 does not slow the queue"],
+  ["src/faucet.mjs", "r.time_ms > prev.time_ms && r.time_ms <= cur.time_ms", "r.time_ms > prev.time_ms", "faucet: rows after the window end counted"],
+  ["src/faucet.mjs", "if (t.sender === signer) rows.set", "rows.set", "faucet: transfers into the faucet counted as sent"],
+  ["src/faucet.mjs", "const explorer = walk?.complete ?", "const explorer = walk ?", "faucet: an incomplete walk is published"],
+  ["src/scan.mjs", "&& String(d.owner) === agent.owner", "", "agents: owner not checked"],
+  ["src/scan.mjs", "acct?.liveBalance === false || acct?.balance == null ? null", "acct?.balance == null ? null", "faucet: untracked explorer balance read as 0"],
+  ["src/sources/rpc.mjs", "    return call;\n  };", "    return Promise.resolve(call).catch(() => null);\n  };", "rpc: failed reads become missing items"],
+  ["src/metrics.mjs", "reading(\"rpc.storage\", chainMiners ? String(sumBig(Object.values(chainMiners).map((m) => m?.total_rewards_earned))) : null, { label: \"minerStaking.totalRewardsEarned, summed\", context: true })", "reading(\"rpc.storage\", chainMiners ? String(sumBig(Object.values(chainMiners).map((m) => m?.total_rewards_earned))) : null, { label: \"minerStaking.totalRewardsEarned, summed\" })", "miners: a non-reward counter decides"],
+  ["src/schedule.mjs", "if (last / len > MAX_PERIODS) throw", "if (false) throw", "schedule: unbounded period expansion"],
+  ["src/format.mjs", "if (whole === \"0\" && !frac && /[1-9]/.test(digits)) return", "if (false) return", "format: tiny amounts shown as 0"],
 ];
 
 // A journal of the file under mutation, written before the mutant and removed after the restore.
